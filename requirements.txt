@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pandas
+openpyxl
+matplotlib
+wordcloud
+nltk
+ftfy
+python-multipart
+jinja2
+python-dotenv

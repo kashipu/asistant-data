@@ -1,0 +1,18 @@
+[project]
+name = "chatbot-analysis"
+version = "0.1.0"
+description = "Dashboard for analyzing banking chatbot data"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pandas",
+    "openpyxl",
+    "matplotlib",
+    "wordcloud",
+    "nltk",
+    "ftfy",
+    "python-multipart",
+    "jinja2"
+]
