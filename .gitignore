@@ -47,7 +47,7 @@ yarn-error.log*
 # Database
 *.sqlite3
 *.db
-data/*.db
+data/
 
 # IDEs
 .idea/
