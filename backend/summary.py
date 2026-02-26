@@ -207,15 +207,30 @@ def get_uncategorized_threads(df: pd.DataFrame, page: int = 1, limit: int = 20, 
         return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
 
     # 1. Identify Uncategorized Threads
-    # Threads where NO AI message has a valid product_type
+    # Threads where NO AI message has a valid product_type AND NO human message has a valid categoria_yaml
     
-    # Valid AI messages
-    valid_ai = df[
-        (df['type'] == 'ai') & 
-        (df['product_type'].notna()) & 
-        (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))
-    ]
-    categorized_threads = set(valid_ai['thread_id'].unique())
+    # Valid messages
+    if 'categoria_yaml' in df.columns:
+        valid_msgs = df[
+            (
+                (df['type'] == 'ai') & 
+                (df['product_type'].notna()) & 
+                (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))
+            ) |
+            (
+                (df['type'] == 'human') & 
+                (df['categoria_yaml'].notna()) & 
+                (~df['categoria_yaml'].isin(['', 'uncategorized', 'sin intención clara', 'sin intencion clara', 'nan', 'None']))
+            )
+        ]
+    else:
+        valid_msgs = df[
+            (df['type'] == 'ai') & 
+            (df['product_type'].notna()) & 
+            (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))
+        ]
+        
+    categorized_threads = set(valid_msgs['thread_id'].unique())
     all_threads = set(df['thread_id'].unique())
     uncategorized_ids = list(all_threads - categorized_threads)
     

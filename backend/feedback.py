@@ -146,7 +146,9 @@ def process_categorization(req: CategorizeRequest):
     if req.new_product:
         product_macro = _get_macro_for_product(req.new_product)
         set_parts.append("product_yaml = ?")
+        set_parts.append("product_type = ?")
         set_parts.append("product_macro_yaml = ?")
+        params.append(req.new_product)
         params.append(req.new_product)
         params.append(product_macro)
 
@@ -156,6 +158,27 @@ def process_categorization(req: CategorizeRequest):
     cursor.execute(query, tuple(params))
     conn.commit()
     conn.close()
+
+    # Update DataEngine in memory
+    from .engine import DataEngine
+    try:
+        engine = DataEngine.get_instance()
+        updates = {
+            'requires_review': 0,
+            'categoria_yaml': req.new_category,
+            'macro_yaml': macro,
+            'intencion': req.new_category
+        }
+        if req.new_sentiment:
+            updates['sentiment'] = req.new_sentiment
+        if req.new_product:
+            updates['product_yaml'] = req.new_product
+            updates['product_type'] = req.new_product
+            updates['product_macro_yaml'] = product_macro
+            
+        engine.update_message(req.message_id, updates)
+    except Exception as e:
+        print(f"Error updating DataEngine in memory: {e}")
 
     # Update YAML to learn for next time
     yaml_updated = update_yaml_category(req.new_category, req.original_text)

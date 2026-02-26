@@ -132,3 +132,14 @@ class DataEngine:
         self.servilinea_threads = set()
         self.empty_msg_threads = set()
         self._initialize()
+
+    def update_message(self, message_id: str, updates: dict):
+        if self.df is not None and not self.df.empty:
+            if 'id' in self.df.columns:
+                mask = self.df['id'] == message_id
+                if mask.any():
+                    for k, v in updates.items():
+                        if k in self.df.columns:
+                            self.df.loc[mask, k] = v
+            else:
+                print("Warning: 'id' column not found in DataEngine dataframe")
