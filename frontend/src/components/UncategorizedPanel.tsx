@@ -67,8 +67,8 @@ export function UncategorizedPanel({ onNavigateToThread, startDate, endDate }: U
 
   const sortedData = [...data].sort((a, b) => {
       if (!sortConfig) return 0;
-      const aVal = (a as any)[sortConfig.key] || '';
-      const bVal = (b as any)[sortConfig.key] || '';
+      const aVal = (a as unknown as Record<string, string | number>)[sortConfig.key] || '';
+      const bVal = (b as unknown as Record<string, string | number>)[sortConfig.key] || '';
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;

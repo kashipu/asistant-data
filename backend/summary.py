@@ -3,8 +3,8 @@ from .referrals import detect_referrals
 
 def get_general_summary(df: pd.DataFrame, start_date: str = None, end_date: str = None):
     """
-    Generates a summary table aggregated by 'Category' AND 'Intention'.
-    Columns: Category, Intention, Conversations, Human Msgs, AI Msgs, Tool Msgs, Positive, Neutral, Negative, Servilínea.
+    Generates a summary table aggregated by 'Category', 'Intention' (Subcategory) AND 'Product'.
+    Columns: Category, Intention, Product, Conversations, Human Msgs, AI Msgs, Tool Msgs, Positive, Neutral, Negative, Servilínea.
     """
     if df.empty:
         return []
@@ -12,61 +12,70 @@ def get_general_summary(df: pd.DataFrame, start_date: str = None, end_date: str 
     # 0. Date Filtering
     if start_date or end_date:
         if 'fecha' in df.columns:
-            # Create a mask
             mask = pd.Series(True, index=df.index)
             if start_date:
-                mask &= (df['fecha'] >= start_date)
+                mask &= (df['fecha'] >= pd.to_datetime(start_date))
             if end_date:
-                mask &= (df['fecha'] <= end_date)
+                mask &= (df['fecha'] <= pd.to_datetime(end_date))
             df = df[mask].copy()
-    
+
     if df.empty:
         return []
 
-    # 1. Determine Thread Category AND Intention based on AI messages
-    ai_msgs = df[df['type'] == 'ai'].copy()
-    
-    # Helper to clean strings
-    def clean_str(s):
-        if pd.isna(s): return None
-        s = str(s).strip().lower()
-        if s in ['', 'ninguno', 'nan', 'none', 'sin intencion clara']: return None
-        return s
+    # 1. Determine Thread Category (macro) and Intention (subcategory) from human messages
+    # Source of truth: categoria_yaml + macro_yaml in DB (set by ETL from YAML)
+    has_yaml = 'categoria_yaml' in df.columns and 'macro_yaml' in df.columns
 
-    if not ai_msgs.empty:
-        ai_msgs['product_type'] = ai_msgs['product_type'].apply(clean_str)
-        ai_msgs['intencion'] = ai_msgs['intencion'].apply(clean_str)
-
-    # Dictionary to store thread -> (category, intention)
     thread_metadata = {}
-    
-    # Group by thread to find mode Category and Mode Intention
-    if not ai_msgs.empty:
-        # We can do this efficiently by grouping
-        grouped_ai = ai_msgs.groupby('thread_id')
-        
-        for tid, group in grouped_ai:
-            # Mode Category
-            cat_mode = group['product_type'].mode()
-            cat = cat_mode.iloc[0] if not cat_mode.empty else 'uncategorized'
-            
-            # Mode Intention
-            int_mode = group['intencion'].mode()
-            intent = int_mode.iloc[0] if not int_mode.empty else 'sin intención clara'
-            
-            thread_metadata[tid] = (cat or 'uncategorized', intent or 'sin intención clara')
+
+    if has_yaml:
+        # Use human messages — they carry categoria_yaml/macro_yaml after ETL
+        human_msgs = df[(df['type'] == 'human') & df['categoria_yaml'].notna()].copy()
+
+        if not human_msgs.empty:
+            grouped_h = human_msgs.groupby('thread_id')
+            for tid, group in grouped_h:
+                macro_mode = group['macro_yaml'].mode()
+                cat_mode   = group['categoria_yaml'].mode()
+                prod_col = 'product_yaml' if 'product_yaml' in group.columns else 'product_type'
+                prod_mode = group[prod_col].mode() if prod_col in group.columns else pd.Series([])
+
+                macro  = macro_mode.iloc[0] if not macro_mode.empty else 'Sin Clasificar'
+                intent = cat_mode.iloc[0]   if not cat_mode.empty   else 'sin categoría'
+                product = prod_mode.iloc[0] if not prod_mode.empty  else 'N/A'
+                thread_metadata[tid] = (macro or 'Sin Clasificar', intent or 'sin categoría', product or 'N/A')
+    else:
+        # Fallback: original product_type + intencion from AI rows
+        ai_msgs = df[df['type'] == 'ai'].copy()
+
+        def clean_str(s):
+            if pd.isna(s): return None
+            s = str(s).strip().lower()
+            if s in ['', 'ninguno', 'nan', 'none', 'sin intencion clara']: return None
+            return s
+
+        if not ai_msgs.empty:
+            ai_msgs['product_type'] = ai_msgs['product_type'].apply(clean_str)
+            ai_msgs['intencion']    = ai_msgs['intencion'].apply(clean_str)
+            grouped_ai = ai_msgs.groupby('thread_id')
+            for tid, group in grouped_ai:
+                cat_mode = group['product_type'].mode()
+                int_mode = group['intencion'].mode()
+                cat    = cat_mode.iloc[0] if not cat_mode.empty else 'uncategorized'
+                intent = int_mode.iloc[0] if not int_mode.empty else 'sin intención clara'
+                thread_metadata[tid] = (cat or 'uncategorized', intent or 'sin intención clara', cat or 'uncategorized') # reuse cat as product in fallback
 
     # 2. Vectorized Aggregation
     
     # Create a DataFrame for Thread Metadata
     # Default to uncategorized
     all_thread_ids = df['thread_id'].unique()
-    meta_df = pd.DataFrame(index=all_thread_ids, columns=['category', 'intention'])
-    meta_df[:] = ('uncategorized', 'sin intención clara')
+    meta_df = pd.DataFrame(index=all_thread_ids, columns=['category', 'intention', 'product'])
+    meta_df[:] = ('uncategorized', 'sin intención clara', 'N/A')
     
     # Update with found metadata
     if thread_metadata:
-        found_meta = pd.DataFrame.from_dict(thread_metadata, orient='index', columns=['category', 'intention'])
+        found_meta = pd.DataFrame.from_dict(thread_metadata, orient='index', columns=['category', 'intention', 'product'])
         meta_df.update(found_meta)
         
     meta_df.reset_index(inplace=True)
@@ -90,15 +99,16 @@ def get_general_summary(df: pd.DataFrame, start_date: str = None, end_date: str 
     
     df_merged = df.merge(meta_df, on='thread_id', how='left')
     
-    # Handle NaNs in category/intention (shouldn't happen due to meta_df init, but safety)
+    # Handle NaNs in category/intention/product (shouldn't happen due to meta_df init, but safety)
     df_merged['category'] = df_merged['category'].fillna('uncategorized')
     df_merged['intention'] = df_merged['intention'].fillna('sin intención clara')
+    df_merged['product'] = df_merged['product'].fillna('N/A')
     
-    # Group by Category/Intention for Message Counts
+    # Group by Category/Intention/Product for Message Counts
     # We map 'type' column to columns: human_msgs, ai_msgs, tool_msgs
     # pivot_table or groupby unstack
     
-    group_cols = ['category', 'intention']
+    group_cols = ['category', 'intention', 'product']
     
     # Aggregations
     # 1. Message counts by type
@@ -188,9 +198,9 @@ def get_uncategorized_threads(df: pd.DataFrame, page: int = 1, limit: int = 20, 
         if 'fecha' in df.columns:
             mask = pd.Series(True, index=df.index)
             if start_date:
-                mask &= (df['fecha'] >= start_date)
+                mask &= (df['fecha'] >= pd.to_datetime(start_date))
             if end_date:
-                mask &= (df['fecha'] <= end_date)
+                mask &= (df['fecha'] <= pd.to_datetime(end_date))
             df = df[mask].copy()
 
     if df.empty:
@@ -297,9 +307,9 @@ def get_survey_stats(df: pd.DataFrame, start_date: str = None, end_date: str = N
         if 'fecha' in df.columns:
             mask = pd.Series(True, index=df.index)
             if start_date:
-                mask &= (df['fecha'] >= start_date)
+                mask &= (df['fecha'] >= pd.to_datetime(start_date))
             if end_date:
-                mask &= (df['fecha'] <= end_date)
+                mask &= (df['fecha'] <= pd.to_datetime(end_date))
             df = df[mask].copy()
 
     if df.empty:

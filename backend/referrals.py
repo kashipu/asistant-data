@@ -82,7 +82,7 @@ def detect_referrals(df: pd.DataFrame):
         
         referral_data.append({
             "thread_id": thread_id,
-            "intencion": first_msg.get('intencion', 'N/A'),
+            "intencion": first_msg.get('categoria_yaml') or first_msg.get('intencion', 'N/A'),
             "product_type": first_msg.get('product_type', 'N/A'),
             "fecha": first_msg.get('fecha', ''),
             "customer_request": last_user_request,

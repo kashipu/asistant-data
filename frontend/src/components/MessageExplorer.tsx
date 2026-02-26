@@ -2,35 +2,69 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Search, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
 
-
 interface MessageExplorerProps {
     initialThreadId?: string;
     startDate?: string;
     endDate?: string;
 }
 
+interface MessageItem {
+    thread_id: string;
+    fecha: string;
+    sentiment: string;
+    input_tokens: number;
+    output_tokens: number;
+    product_yaml?: string;
+    product_macro_yaml?: string;
+    categoria_yaml?: string;
+    macro_yaml?: string;
+    servilinea_referral?: boolean;
+    hora?: string | number;
+    thread_length?: number;
+    type?: string;
+    text?: string;
+    [key: string]: unknown;
+}
+
 export const MessageExplorer = ({ initialThreadId, startDate, endDate }: MessageExplorerProps) => {
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<MessageItem[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [options, setOptions] = useState<any>({ intenciones: [], productos: [], sentimientos: [] });
+    const [options, setOptions] = useState<{ intenciones: string[]; productos: string[]; sentimientos: string[] }>({ intenciones: [], productos: [], sentimientos: [] });
     
     // Filters
     const [search, setSearch] = useState('');
+    const [macroToSub, setMacroToSub] = useState<Record<string, string[]>>({});
+    const [macros, setMacros] = useState<string[]>([]);
+    const [subcategories, setSubcategories] = useState<string[]>([]);
+    const [macroCategoria, setMacroCategoria] = useState('');
     const [intencion, setIntencion] = useState('');
     const [sentiment, setSentiment] = useState('');
     const [product, setProduct] = useState('');
     const [senderType, setSenderType] = useState(''); // 'human' | 'ai'
     const [threadId, setThreadId] = useState(initialThreadId || '');
-    const [excludeEmpty, setExcludeEmpty] = useState(false);
     const [sortBy, setSortBy] = useState(''); // '' | 'length_asc' | 'length_desc'
 
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
     useEffect(() => {
-        api.getOptions().then(setOptions).catch(console.error);
+        api.getOptions().then(res => {
+            setOptions(res);
+            setMacros(res.macros || []);
+            setMacroToSub(res.macro_to_sub || {});
+        }).catch(console.error);
     }, []);
+
+    // Update subcategories when macro changes
+    useEffect(() => {
+        if (macroCategoria) {
+            setSubcategories(macroToSub[macroCategoria] || []);
+        } else {
+            setSubcategories([]);
+        }
+        setIntencion(''); // Reset subcategory when macro changes
+    }, [macroCategoria, macroToSub]);
 
     // Update threadId if prop changes
     useEffect(() => {
@@ -52,7 +86,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
     // Reset page when filters change (except page itself)
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, intencion, sentiment, product, senderType, threadId, excludeEmpty, sortBy, startDate, endDate]);
+    }, [debouncedSearch, macroCategoria, intencion, sentiment, product, senderType, threadId, sortBy, startDate, endDate]);
 
     const fetchMessages = React.useCallback(async () => {
         setLoading(true);
@@ -61,12 +95,12 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                 page,
                 limit: 20,
                 search: debouncedSearch || undefined,
-                intencion: intencion || undefined,
                 sentiment: sentiment || undefined,
                 product: product || undefined,
+                macro_categoria: macroCategoria || undefined,
+                intencion: intencion || undefined,
                 sender_type: senderType || undefined,
                 thread_id: threadId || undefined,
-                exclude_empty: excludeEmpty,
                 sort_by: sortBy || undefined,
                 start_date: startDate,
                 end_date: endDate
@@ -78,22 +112,11 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
         } finally {
             setLoading(false);
         }
-    }, [page, debouncedSearch, intencion, sentiment, product, senderType, threadId, excludeEmpty, sortBy, startDate, endDate]);
+    }, [page, debouncedSearch, macroCategoria, intencion, sentiment, product, senderType, threadId, sortBy, startDate, endDate]);
 
     useEffect(() => {
         fetchMessages();
     }, [fetchMessages]); 
-
-    
-    // Let's go with `debouncedSearch` pattern for cleanliness
-    // But to respect existing structure without massive refactor:
-    // We already have `fetchMessages` dependent on `search`.
-    // We should NOT include `search` in `fetchMessages` dependency array if we want to debounce it manually here.
-    // However, simplest fix for "not loading" is usually that it WAS loading but effect dependencies were wrong.
-    // The previous code had empty body in debounce effect! 
-    
-    // The logic below ensures that when `search` changes, we wait 500ms then trigger the fetch depending on whether page needs reset.
-
 
     const totalPages = Math.ceil(total / 20);
 
@@ -118,7 +141,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                     {/* Thread Filter Active Indicator */}
                     {threadId && (
                         <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-                            <span className="text-sm text-blue-800 font-medium">Hilo: {threadId.substring(0, 8)}...</span>
+                            <span className="text-sm text-blue-800 font-medium">Hilo: {threadId}</span>
                             <button 
                                 onClick={() => { setThreadId(''); setPage(1); }}
                                 className="text-blue-500 hover:text-blue-700"
@@ -141,13 +164,41 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
 
                     <select 
                         className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={intencion}
-                        onChange={(e) => { setIntencion(e.target.value); setPage(1); }}
+                        value={macroCategoria}
+                        onChange={(e) => setMacroCategoria(e.target.value)}
                     >
-                        <option value="">Todas las intenciones</option>
-                        {options.intenciones.map((i: string) => <option key={i} value={i}>{i}</option>)}
+                        <option value="">Todas las categorías</option>
+                        {macros.map((m: string) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+
+                    <select 
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 bg-white"
+                        value={intencion}
+                        onChange={(e) => setIntencion(e.target.value)}
+                        disabled={!macroCategoria}
+                    >
+                        <option value="">Todas las subcategorías</option>
+                        {subcategories.map((s: string) => <option key={s} value={s}>{s}</option>)}
                     </select>
                     
+                    <select 
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={product}
+                        onChange={(e) => { setProduct(e.target.value); setPage(1); }}
+                    >
+                        <option value="">Todos los productos</option>
+                        {options.productos?.map((p: string) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+
+                    <select 
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={sentiment}
+                        onChange={(e) => { setSentiment(e.target.value); setPage(1); }}
+                    >
+                        <option value="">Cualquier sentimiento</option>
+                        {options.sentimientos?.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+
                     <select 
                         className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={sortBy}
@@ -157,34 +208,6 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                         <option value="length_desc">Más largas primero</option>
                         <option value="length_asc">Más cortas primero</option>
                     </select>
-
-                    <select 
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={sentiment}
-                        onChange={(e) => { setSentiment(e.target.value); setPage(1); }}
-                    >
-                        <option value="">Cualquier sentimiento</option>
-                        {options.sentimientos.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-
-                     <select 
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={product}
-                        onChange={(e) => { setProduct(e.target.value); setPage(1); }}
-                    >
-                        <option value="">Todos los productos</option>
-                        {options.productos.map((p: string) => <option key={p} value={p}>{p}</option>)}
-                    </select>
-
-                   <label className="flex items-center gap-2 text-sm text-gray-700 select-none cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={excludeEmpty}
-                        onChange={(e) => { setExcludeEmpty(e.target.checked); setPage(1); }}
-                        className="rounded text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      Excluir vacíos
-                   </label>
                 </div>
             </div>
 
@@ -197,10 +220,11 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Thread ID</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Remitente</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Mensaje</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Intención</th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Categoría</th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Subcategoría</th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Producto</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Sentimiento</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 text-center">Servilínea</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 text-right">Acciones</th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 text-center">Referido</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -215,6 +239,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                                 </tr>
                             ))
                         ) : (
@@ -222,14 +247,22 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                                 <tr key={idx} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                                         {msg.fecha} {msg.hora}:00
-                                        {msg.thread_length > 0 && (
+                                        {(msg.thread_length ?? 0) > 0 && (
                                             <div className="text-xs text-gray-400 mt-1">
                                                 Hilo de {msg.thread_length} msjs
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-sm font-mono text-gray-400 text-xs select-all">
-                                        {msg.thread_id}
+                                    <td className="px-6 py-4 text-sm font-mono text-gray-500 text-xs">
+                                        <div className="flex flex-col gap-1 items-start">
+                                            <span className="select-all break-all" title={msg.thread_id}>{msg.thread_id}</span>
+                                            <button 
+                                                onClick={() => { setThreadId(msg.thread_id); setPage(1); }}
+                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-[10px]"
+                                            >
+                                                Ver hilo completo
+                                            </button>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -241,7 +274,9 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                                     <td className="px-6 py-4 text-sm text-gray-900 max-w-md truncate" title={msg.text}>
                                         {msg.text || <span className="text-gray-300 italic">(vacío)</span>}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{msg.intencion || '-'}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{msg.macro_yaml || '-'}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{msg.categoria_yaml || '-'}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{msg.product_yaml || '-'}</td>
                                     <td className="px-6 py-4 text-sm">
                                         {msg.sentiment && (
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -255,22 +290,11 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                                     </td>
                                      <td className="px-6 py-4 text-sm text-center">
                                         {msg.is_servilinea ? (
-                                            <span title="Conversación redirigida a Servilínea">
-                                                <PhoneCall size={16} className="text-blue-500 inline" />
+                                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 justify-center">
+                                                <PhoneCall size={12} /> Sí
                                             </span>
                                         ) : (
-                                            <span className="text-gray-300">-</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-right">
-                                        {!threadId && (
-                                            <button 
-                                                onClick={() => { setThreadId(msg.thread_id); setPage(1); }}
-                                                className="text-blue-600 hover:text-blue-900 text-xs font-medium"
-                                                title="Ver conversación completa"
-                                            >
-                                                Ver hilo
-                                            </button>
+                                            <span className="text-gray-300">No</span>
                                         )}
                                     </td>
                                 </tr>

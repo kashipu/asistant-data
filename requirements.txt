@@ -9,3 +9,4 @@ ftfy
 python-multipart
 jinja2
 python-dotenv
+pyyaml

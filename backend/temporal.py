@@ -5,6 +5,12 @@ def get_temporal_analysis(df: pd.DataFrame):
     """
     Returns time-series data.
     """
+    if df is None or df.empty:
+        return {
+            "daily_volume": {},
+            "hourly_volume": {},
+            "day_of_week_volume": {}
+        }
     # Daily volume
     daily_volume = df.groupby(df['fecha'].dt.date).size().to_dict()
     # Convert keys to str for JSON serialization

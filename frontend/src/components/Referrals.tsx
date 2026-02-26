@@ -8,8 +8,18 @@ interface ReferralsProps {
     endDate?: string;
 }
 
+interface ReferralItem {
+    thread_id: string;
+    fecha: string;
+    customer_request: string;
+    referral_response: string;
+    intencion: string;
+    product_type: string;
+    [key: string]: string;
+}
+
 export const Referrals = ({ onNavigateToThread, startDate, endDate }: ReferralsProps) => {
-    const [referrals, setReferrals] = useState<any[]>([]);
+    const [referrals, setReferrals] = useState<ReferralItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
@@ -39,8 +49,8 @@ export const Referrals = ({ onNavigateToThread, startDate, endDate }: ReferralsP
 
     const sortedReferrals = [...referrals].sort((a, b) => {
         if (!sortConfig) return 0;
-        const aVal = a[sortConfig.key] || '';
-        const bVal = b[sortConfig.key] || '';
+        const aVal = (a as unknown as Record<string, string | number>)[sortConfig.key] || '';
+        const bVal = (b as unknown as Record<string, string | number>)[sortConfig.key] || '';
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;

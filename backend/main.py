@@ -3,6 +3,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import pandas as pd
+from fastapi import BackgroundTasks
 from .engine import DataEngine
 from .metrics import get_general_kpis
 from .failures import detect_failures 
@@ -14,13 +15,25 @@ from .conversations import get_conversation_analysis
 from .summary import get_general_summary, get_uncategorized_threads, get_survey_stats
 from .advisors import detect_advisor_requests
 from .insights import get_insights_data
+from .feedback import get_feedback_messages, process_categorization, CategorizeRequest, get_category_options, get_product_options
+from .faqs import get_faqs_by_category
+from .ingest import ingest_data
+from .category_insights import get_qualitative_insights, get_category_insights
+import time
 
 app = FastAPI(title="Chatbot Analysis API")
+
+# Global state for ETL progress
+etl_state = {
+    "is_running": False,
+    "start_time": None,
+    "last_status": None  # "success" | "error" | None
+}
 
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -129,6 +142,7 @@ def get_messages_endpoint(
     page: int = 1,
     limit: int = 20,
     intencion: Optional[str] = None,
+    macro_categoria: Optional[str] = None,
     sentiment: Optional[str] = None,
     product: Optional[str] = None,
     search: Optional[str] = None,
@@ -175,14 +189,27 @@ def get_messages_endpoint(
         filtered_df = filtered_df[filtered_df['thread_id'] == thread_id]
         filtered_df = filtered_df.sort_values(by=['rowid'])
     
+    if macro_categoria:
+        if 'macro_yaml' in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df['macro_yaml'] == macro_categoria]
     if intencion:
-        filtered_df = filtered_df[filtered_df['intencion'] == intencion]
+        # Filter on categoria_yaml (YAML source of truth); fallback to intencion for compatibility
+        if 'categoria_yaml' in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df['categoria_yaml'] == intencion]
+        else:
+            filtered_df = filtered_df[filtered_df['intencion'] == intencion]
     if sentiment:
         filtered_df = filtered_df[filtered_df['sentiment'] == sentiment]
     if product:
-        filtered_df = filtered_df[filtered_df['product_type'] == product]
+        if 'product_yaml' in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df['product_yaml'] == product]
+        else:
+            filtered_df = filtered_df[filtered_df['product_type'] == product]
     if search:
-        filtered_df = filtered_df[filtered_df['text'].str.contains(search, case=False, na=False)]
+        # Search match either text or thread_id
+        text_match = filtered_df['text'].str.contains(search, case=False, na=False)
+        thread_match = filtered_df['thread_id'].str.contains(search, case=False, na=False)
+        filtered_df = filtered_df[text_match | thread_match]
     
     if exclude_empty:
         # Filter out empty or whitespace-only messages
@@ -208,7 +235,7 @@ def get_messages_endpoint(
     result['is_servilinea'] = result['thread_id'].apply(lambda x: engine.is_servilinea(x))
 
     # Convert dates to string for JSON serialization
-    if 'fecha' in result.columns:
+    if 'fecha' in result.columns and pd.api.types.is_datetime64_any_dtype(result['fecha']):
         result['fecha'] = result['fecha'].dt.strftime('%Y-%m-%d').fillna('')
     
     return {
@@ -221,16 +248,57 @@ def get_messages_endpoint(
 @app.get("/api/options")
 def get_filter_options():
     df = DataEngine.get_instance().get_messages()
+    import yaml
+    import os
+    yaml_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "categorias.yml")
+    
+    macros = set()
+    macro_to_sub = {} # {macro: [sub1, sub2]}
+    all_subcategories = []
+
+    if os.path.exists(yaml_path):
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+            for c in data.get('categorias', []):
+                m = c.get('macro', 'Sin Clasificar')
+                s = c.get('nombre')
+                if not s: continue
+                
+                macros.add(m)
+                if m not in macro_to_sub: macro_to_sub[m] = []
+                if s not in macro_to_sub[m]: macro_to_sub[m].append(s)
+                if s not in all_subcategories: all_subcategories.append(s)
+
+    # Products from second YAML
+    products = []
+    prod_yaml_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "productos.yml")
+    if os.path.exists(prod_yaml_path):
+        with open(prod_yaml_path, 'r', encoding='utf-8') as f:
+            p_data = yaml.safe_load(f)
+            products = [p.get('nombre') for p in p_data.get('productos', []) if p.get('nombre')]
+
     return {
-        "intenciones": df['intencion'].dropna().unique().tolist(),
-        "productos": df['product_type'].dropna().unique().tolist(),
-        "sentimientos": df['sentiment'].dropna().unique().tolist()
+        "macros": sorted(list(macros)),
+        "macro_to_sub": macro_to_sub,
+        "intenciones": sorted(all_subcategories),
+        "productos": sorted(products),
+        "sentimientos": ["positivo", "neutral", "negativo"]
     }
 
 @app.get("/api/insights")
 def get_insights_endpoint():
     df = DataEngine.get_instance().get_messages()
     return get_insights_data(df)
+
+@app.get("/api/insights/qualitative")
+def get_qualitative_insights_endpoint():
+    df = DataEngine.get_instance().get_messages()
+    return get_qualitative_insights(df)
+
+@app.get("/api/insights/category")
+def get_category_insights_endpoint(categoria: str):
+    df = DataEngine.get_instance().get_messages()
+    return get_category_insights(df, categoria)
 
 @app.get("/api/advisors")
 def get_advisors_endpoint(
@@ -239,3 +307,69 @@ def get_advisors_endpoint(
 ):
     df = DataEngine.get_instance().get_messages(start_date, end_date)
     return detect_advisor_requests(df)
+
+@app.get("/api/feedbacks")
+def api_get_feedbacks(page: int = 1, limit: int = 20):
+    return get_feedback_messages(page=page, limit=limit)
+
+@app.post("/api/feedbacks/categorize")
+def api_post_categorize(req: CategorizeRequest):
+    return process_categorization(req)
+
+@app.get("/api/feedbacks/options")
+def api_get_feedback_options():
+    """Returns available categories and products for the HITL review form."""
+    return {
+        "categories": get_category_options(),
+        "products": get_product_options(),
+        "sentiments": ["positivo", "neutral", "negativo"]
+    }
+
+@app.get("/api/faqs")
+def api_get_faqs(top_n: int = 5):
+    """
+    Returns the top most frequent phrases per category (Test Cases).
+    """
+    df = DataEngine.get_instance().get_messages()
+    return get_faqs_by_category(df, top_n)
+
+@app.post("/api/etl/run")
+def api_run_etl(background_tasks: BackgroundTasks):
+    """
+    Triggers the ETL pipeline to re-process data asynchronously.
+    """
+    global etl_state
+    if etl_state["is_running"]:
+        return {"message": "ETL process is already running."}
+        
+    etl_state["is_running"] = True
+    etl_state["start_time"] = time.time()
+
+    def task_wrapper():
+        global etl_state
+        try:
+            ingest_data()
+            DataEngine.get_instance().reload()
+            etl_state["last_status"] = "success"
+        except Exception as e:
+            print(f"ETL failed: {e}")
+            etl_state["last_status"] = "error"
+        finally:
+            etl_state["is_running"] = False
+            etl_state["start_time"] = None
+            
+    background_tasks.add_task(task_wrapper)
+    return {"message": "ETL process started in the background."}
+
+@app.get("/api/etl/status")
+def api_get_etl_status():
+    global etl_state
+    elapsed = 0
+    if etl_state["is_running"] and etl_state["start_time"]:
+        elapsed = int(time.time() - etl_state["start_time"])
+    
+    return {
+        "is_running": etl_state["is_running"],
+        "elapsed_seconds": elapsed,
+        "last_status": etl_state["last_status"]
+    }

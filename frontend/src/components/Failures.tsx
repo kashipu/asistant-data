@@ -8,8 +8,19 @@ interface FailuresProps {
     endDate?: string;
 }
 
+interface FailureItem {
+    thread_id: string;
+    fecha: string;
+    criteria: string;
+    sentiment: string;
+    last_user_message: string;
+    intencion: string;
+    product_type: string;
+    [key: string]: string;
+}
+
 export const Failures = ({ onNavigateToThread, startDate, endDate }: FailuresProps) => {
-    const [failures, setFailures] = useState<any[]>([]);
+    const [failures, setFailures] = useState<FailureItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);

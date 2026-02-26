@@ -43,7 +43,7 @@ def get_conversation_analysis(df: pd.DataFrame, thread_id: str = None):
         longest_threads_data.append({
             "thread_id": tid,
             "length": int(length),
-            "intencion": first_msg.get('intencion', 'N/A'),
+            "intencion": first_msg.get('categoria_yaml') or first_msg.get('intencion', 'N/A'),
             "product": first_msg.get('product_type', 'N/A')
         })
         

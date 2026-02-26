@@ -1,0 +1,255 @@
+version: v1-20260226
+# Catálogo de productos del banco.
+# Estructura:
+#   - nombre:        nombre canónico del producto (usado en DB como product_type_yaml)
+#   - macro:         grupo de productos al que pertenece
+#   - aliases:       variantes textuales del CSV (product_type / product_detail) que mapean a este producto
+#   - palabras_clave: términos que pueden aparecer en el texto del usuario para inferir el producto
+#                     cuando el CSV no trae product_type (aplica NLP de respaldo)
+
+productos:
+
+# ─────────────────────────────────────────────
+# MACRO: Tarjetas
+# ─────────────────────────────────────────────
+- nombre: Tarjeta de Crédito
+  macro: Tarjetas
+  aliases:
+    - tarjeta de credito
+    - tarjeta credito
+    - tc
+    - "[tarjeta de credito] latam"
+    - "[tarjeta de credito] visa"
+    - "[tarjeta de credito] mastercard"
+    - "[tarjeta de credito] cerorollo"
+    - "[tarjeta de credito] amex"
+  palabras_clave:
+    - tarjeta de crédito
+    - tarjeta crédito
+    - tarjeta credito
+    - mi tarjeta crédito
+    - cupo de crédito
+    - cupo disponible
+    - cuota de manejo
+    - fecha de corte
+    - fecha corte
+    - pago mínimo
+    - pago minimo
+    - avance en efectivo
+    - avance efectivo
+    - tarjeta visa
+    - tarjeta mastercard
+    - tarjeta amex
+    - tarjeta latam
+    - cerorollo
+
+- nombre: Tarjeta Débito
+  macro: Tarjetas
+  aliases:
+    - tarjeta de debito
+    - tarjeta debito
+    - td
+  palabras_clave:
+    - tarjeta débito
+    - tarjeta debito
+    - tarjeta de débito
+    - tarjeta de debito
+    - tarjeta azul
+    - tarjeta amarilla
+
+# ─────────────────────────────────────────────
+# MACRO: Cuentas
+# ─────────────────────────────────────────────
+- nombre: Cuenta de Ahorros
+  macro: Cuentas
+  aliases:
+    - cuenta de ahorros
+    - cuenta ahorros
+    - "[cuenta de ahorros] nomina"
+    - "[cuenta de ahorros] pensional"
+    - "[cuenta de ahorros] afc"
+  palabras_clave:
+    - cuenta de ahorros
+    - cuenta ahorros
+    - cuenta nómina
+    - cuenta nomina
+    - cuenta pensional
+    - cuenta afc
+    - ahorros
+
+- nombre: Cuenta Corriente
+  macro: Cuentas
+  aliases:
+    - cuenta corriente
+  palabras_clave:
+    - cuenta corriente
+    - cheques
+    - chequera
+
+- nombre: CDT
+  macro: Cuentas
+  aliases:
+    - cdt
+    - certificado de deposito
+  palabras_clave:
+    - cdt
+    - certificado de depósito
+    - certificado de deposito
+    - depósito a término
+    - deposito a termino
+
+- nombre: Fondo de Inversión
+  macro: Cuentas
+  aliases:
+    - fondo de inversion
+    - fondo inversion
+  palabras_clave:
+    - fondo de inversión
+    - fondo de inversion
+    - fondo mutuo
+    - portafolio de inversión
+    - portafolio de inversion
+
+# ─────────────────────────────────────────────
+# MACRO: Créditos
+# ─────────────────────────────────────────────
+- nombre: Crédito de Libre Inversión
+  macro: Créditos
+  aliases:
+    - credito de libre inversion
+    - credito libre inversion
+    - prestamo libre inversion
+  palabras_clave:
+    - crédito de libre inversión
+    - crédito libre inversión
+    - credito libre inversion
+    - préstamo personal
+    - prestamo personal
+    - crédito personal
+    - credito personal
+
+- nombre: Crédito de Vivienda
+  macro: Créditos
+  aliases:
+    - credito de vivienda
+    - credito vivienda
+    - hipoteca
+  palabras_clave:
+    - crédito de vivienda
+    - crédito hipotecario
+    - credito hipotecario
+    - hipoteca
+    - leasing habitacional
+    - subsidio de vivienda
+    - vis
+
+- nombre: Crédito de Vehículo
+  macro: Créditos
+  aliases:
+    - credito de vehiculo
+    - credito vehiculo
+    - credito carro
+  palabras_clave:
+    - crédito de vehículo
+    - crédito vehiculo
+    - credito carro
+    - crédito moto
+    - leasing vehiculo
+    - financiación vehículo
+
+- nombre: Crédito de Libranza
+  macro: Créditos
+  aliases:
+    - credito de libranza
+    - libranza
+  palabras_clave:
+    - crédito de libranza
+    - libranza
+    - descuento por nómina
+    - descuento nomina
+
+- nombre: Crédito Estudiantil
+  macro: Créditos
+  aliases:
+    - credito estudiantil
+    - credito educativo
+  palabras_clave:
+    - crédito estudiantil
+    - crédito educativo
+    - credito educacion
+    - icetex
+    - beca
+
+- nombre: Crédito Empresarial
+  macro: Créditos
+  aliases:
+    - credito empresarial
+    - credito pyme
+    - credito empresa
+  palabras_clave:
+    - crédito empresarial
+    - crédito pyme
+    - crédito empresa
+    - capital de trabajo
+    - microcrédito
+
+- nombre: Crédito General
+  macro: Créditos
+  aliases:
+    - credito
+  palabras_clave: []
+
+# ─────────────────────────────────────────────
+# MACRO: Seguros
+# ─────────────────────────────────────────────
+- nombre: Seguros
+  macro: Seguros
+  aliases:
+    - seguro
+    - seguros
+    - seguro de vida
+    - seguro hogar
+    - seguro vehiculo
+    - soat
+  palabras_clave:
+    - seguro
+    - seguro de vida
+    - seguro hogar
+    - seguro de desempleo
+    - soat
+    - póliza
+    - poliza
+    - prima de seguro
+
+# ─────────────────────────────────────────────
+# MACRO: Otros Productos
+# ─────────────────────────────────────────────
+- nombre: Leasing
+  macro: Otros Productos
+  aliases:
+    - leasing
+  palabras_clave:
+    - leasing
+    - arrendamiento financiero
+
+- nombre: Remesas
+  macro: Otros Productos
+  aliases:
+    - remesas
+    - giros internacionales
+  palabras_clave:
+    - remesa
+    - remesas
+    - giro internacional
+    - envío internacional
+    - envio internacional
+    - western union
+    - money gram
+
+- nombre: Ninguno / General
+  macro: General
+  aliases:
+    - ninguno
+    - "ninguno "
+    - ""
+  palabras_clave: []

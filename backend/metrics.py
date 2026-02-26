@@ -5,6 +5,20 @@ def get_general_kpis(df: pd.DataFrame):
     """
     Calculates general KPIs from the DataFrame.
     """
+    if df is None or df.empty:
+        return {
+            "total_conversations": 0,
+            "total_messages": 0,
+            "messages_by_type": {},
+            "avg_messages_per_thread": 0,
+            "median_messages_per_thread": 0,
+            "total_users": 0,
+            "avg_conversations_per_user": 0,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "avg_input_tokens_per_ai_msg": 0,
+            "avg_output_tokens_per_ai_msg": 0
+        }
     total_conversations = df['thread_id'].nunique()
     total_messages = len(df)
     

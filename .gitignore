@@ -67,3 +67,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Backups & Temp Errors
+*_backup.yml
+*_errors.txt

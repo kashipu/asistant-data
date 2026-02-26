@@ -16,7 +16,7 @@ interface KPIsProps {
   loading: boolean;
 }
 
-const KpiCard = ({ title, value, icon: Icon, color }: { title: string, value: string | number, icon: any, color: string }) => (
+const KpiCard = ({ title, value, icon: Icon, color }: { title: string, value: string | number, icon: React.ElementType, color: string }) => (
   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex items-center space-x-4">
     <div className={`p-3 rounded-full ${color}`}>
       <Icon className="w-6 h-6 text-white" />

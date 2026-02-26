@@ -67,8 +67,11 @@ def detect_failures(df: pd.DataFrame):
     
     grouped = relevant_df.groupby('thread_id')
     
-    # Intention, Product, and Date (from first message)
-    first_vals = grouped[['intencion', 'product_type', 'fecha']].first()
+    # Category and Date — use categoria_yaml (YAML source of truth), fallback to intencion
+    cat_col = 'categoria_yaml' if 'categoria_yaml' in relevant_df.columns else 'intencion'
+    first_vals = grouped[[cat_col, 'product_type', 'fecha']].first()
+    if cat_col == 'categoria_yaml':
+        first_vals = first_vals.rename(columns={'categoria_yaml': 'intencion'})
     
     # Message Count
     msg_counts = grouped.size().rename('msg_count')

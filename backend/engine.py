@@ -97,8 +97,16 @@ class DataEngine:
         finally:
             conn.close()
 
-    def get_messages(self):
-        return self.df
+    def get_messages(self, start_date=None, end_date=None):
+        df_filtered = self.df
+        if (start_date or end_date) and not df_filtered.empty and 'fecha' in df_filtered.columns:
+            mask = pd.Series(True, index=df_filtered.index)
+            if start_date:
+                mask &= (df_filtered['fecha'] >= pd.to_datetime(start_date))
+            if end_date:
+                mask &= (df_filtered['fecha'] <= pd.to_datetime(end_date))
+            df_filtered = df_filtered[mask]
+        return df_filtered
 
     def get_referrals(self):
         return self.referrals_df
@@ -114,3 +122,13 @@ class DataEngine:
 
     def has_empty_messages(self, thread_id):
         return thread_id in self.empty_msg_threads
+
+    def reload(self):
+        print("Reloading Data Engine...")
+        self.df = None
+        self.referrals_df = None
+        self.failures_df = None
+        self.thread_lengths = None
+        self.servilinea_threads = set()
+        self.empty_msg_threads = set()
+        self._initialize()

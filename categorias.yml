@@ -1,0 +1,1122 @@
+version: v12-20260226-macro-subcategoria
+# Estructura: cada categoría tiene un campo 'macro' (agrupador) y 'nombre' (subcategoría).
+# El campo 'macro' se usa para agrupar en gráficas y FAQs.
+# Si una categoría ES la macro (sin subcategoría específica), macro == nombre.
+# min_len: longitud mínima del texto para que aplique (default: 1)
+# Las palabras con ^ o $ se tratan como regex de línea completa.
+
+categorias:
+
+# ─────────────────────────────────────────────
+# MACRO: Transferencias
+# ─────────────────────────────────────────────
+- nombre: Envío de Dinero
+  macro: Transferencias
+  descripcion: Usuario quiere enviar o transferir dinero a otra cuenta, banco o persona.
+  palabras_clave:
+  - enviar dinero
+  - enviar plata
+  - enviar efectivo
+  - mandar dinero
+  - mandar plata
+  - hacer transferencia
+  - hacer transferencias
+  - realizar transferencia
+  - realizar transferencias
+  - transferir dinero
+  - transferir
+  - transferencia rapida
+  - transferencia rápida
+  - cel2cel
+  - transfiya
+  - trasfiya
+  - bre-b
+  - llave transfiya
+  - registrar llave
+  - usar la llave
+  - las llaves
+  - llave
+  - llaves
+  - avances
+  - movimiento de dinero
+
+- nombre: Transferencia Fallida / No Llegó
+  macro: Transferencias
+  descripcion: Transferencia realizada pero el dinero no llegó, está pendiente o fue rechazada.
+  palabras_clave:
+  - no aparece el dinero
+  - dinero no llegó
+  - dinero no llego
+  - demora transferencia
+  - transferencia fallida
+  - transaccion fallida
+  - transacción fallida
+  - no fue exitosa
+  - no fue posible
+  - no salio exitosa
+  - no salió exitosa
+  - no ha llegado
+  - no llego el dinero
+  - transferencia no llego
+  - transferencia no llegó
+
+- nombre: Consulta de Transferencias
+  macro: Transferencias
+  descripcion: Consultas generales sobre cómo funciona el proceso de transferencias.
+  palabras_clave:
+  - transferencia
+  - transferencias
+  - transfer
+  - movimiento
+  - movimientos
+
+# ─────────────────────────────────────────────
+# MACRO: Pagos
+# ─────────────────────────────────────────────
+- nombre: Pago de Crédito / Préstamo
+  macro: Pagos
+  descripcion: Pagos de cuotas de crédito, préstamos, libre inversión u obligaciones.
+  palabras_clave:
+  - como pago
+  - pago credito
+  - pago crédito
+  - pagar credito
+  - pagar crédito
+  - pago prestamo
+  - pago préstamo
+  - pagar prestamo
+  - pagar préstamo
+  - cuota credito
+  - cuota crédito
+  - pago tc
+  - pago tarjeta credito
+  - pago tarjeta crédito
+  - pagar tarjeta
+  - abono credito
+  - abono crédito
+  - abono prestamo
+  - pagar obligacion
+
+- nombre: Pago de Servicios / Facturas
+  macro: Pagos
+  descripcion: Pagos de servicios públicos, facturas, impuestos, planilla PILA.
+  palabras_clave:
+  - servicios publicos
+  - servicios públicos
+  - pagar servicios
+  - pago servicios
+  - factura
+  - facturas
+  - recaudo
+  - planilla pila
+  - impuesto
+  - impuestos
+  - hacer pagos
+  - realizar pagos
+  - pago facil
+  - pago fácil
+  - pago rapido
+  - pago rápido
+  - avalpay
+
+- nombre: Pago con QR / PSE / Digital
+  macro: Pagos
+  descripcion: Pagos digitales mediante QR, PSE u otros medios electrónicos.
+  palabras_clave:
+  - pse
+  - qr
+  - pago qr
+  - pago digital
+  - pago electronico
+  - pago electrónico
+  - pago movil
+  - pago móvil
+
+- nombre: Consulta de Pagos
+  macro: Pagos
+  descripcion: Consultas generales sobre pagos o cómo realizarlos.
+  palabras_clave:
+  - pago
+  - pagos
+  - pagar
+
+# ─────────────────────────────────────────────
+# MACRO: Tarjetas
+# ─────────────────────────────────────────────
+- nombre: Tarjeta de Crédito
+  macro: Tarjetas
+  descripcion: Consultas, problemas o solicitudes relacionadas con tarjeta de crédito.
+  palabras_clave:
+  - tarjeta credito
+  - tarjeta crédito
+  - tarjeta de credito
+  - tarjeta de crédito
+  - tc
+  - cupo tarjeta
+  - cupo credito
+  - cupo crédito
+  - diferido
+  - diferidos
+  - diferir
+  - modificar cuotas
+  - plastico
+  - plástico
+
+- nombre: Tarjeta Débito
+  macro: Tarjetas
+  descripcion: Consultas, problemas o solicitudes relacionadas con tarjeta débito.
+  palabras_clave:
+  - tarjeta debito
+  - tarjeta débito
+  - tarjeta de debito
+  - tarjeta de débito
+  - td
+
+- nombre: Retiro sin Tarjeta
+  macro: Tarjetas
+  descripcion: Retiros de efectivo sin usar tarjeta física.
+  palabras_clave:
+  - retiro sin tarjeta
+
+- nombre: Consulta de Tarjetas
+  macro: Tarjetas
+  descripcion: Consultas generales sobre tarjetas sin especificar tipo.
+  palabras_clave:
+  - tarjeta
+  - tarjetas
+
+# ─────────────────────────────────────────────
+# MACRO: Créditos y Préstamos
+# ─────────────────────────────────────────────
+- nombre: Solicitud de Crédito
+  macro: Créditos y Préstamos
+  descripcion: Usuario quiere solicitar, conocer requisitos u obtener un crédito o préstamo.
+  palabras_clave:
+  - solicitar credito
+  - solicitar crédito
+  - pedir prestamo
+  - pedir préstamo
+  - quiero un credito
+  - quiero un crédito
+  - credito de libre inversion
+  - crédito de libre inversión
+  - libre inversion
+  - libre inversión
+  - prestamo personal
+  - préstamo personal
+  - credito hipotecario
+  - crédito hipotecario
+  - hipoteca
+  - credito de consumo
+  - credito consumo
+
+- nombre: Cuotas y Plazos de Crédito
+  macro: Créditos y Préstamos
+  descripcion: Preguntas sobre cuántas cuotas, plazos, monto de cuota o modificación de crédito.
+  palabras_clave:
+  - cuota
+  - cuotas
+  - plazo
+  - plazos
+  - modificar
+  - numero de cuotas
+  - número de cuotas
+  - cuanto me prestan
+  - cuánto me prestan
+
+- nombre: Cobros e Intereses
+  macro: Créditos y Préstamos
+  descripcion: Preguntas sobre tasas, intereses, comisiones, cobros inesperados o cuotas de manejo.
+  palabras_clave:
+  - 4 x 1000
+  - 4*1000
+  - 4x1000
+  - comision
+  - comisión
+  - cuota de manejo
+  - cuota manejo
+  - gravamen
+  - tasa interes
+  - tasa interés
+  - tasa
+  - tasas
+  - me cobran
+  - me cobraron
+  - descuentan
+  - tarifa
+  - tarifas
+  - desmarcacion
+  - desmarcación
+
+# ─────────────────────────────────────────────
+# MACRO: Cuentas y Productos
+# ─────────────────────────────────────────────
+- nombre: Apertura / Cancelación de Cuenta
+  macro: Cuentas y Productos
+  descripcion: Solicitudes para abrir, cerrar o cancelar una cuenta bancaria.
+  palabras_clave:
+  - abrir cuenta
+  - apertura cuenta
+  - cancelar cuenta
+  - cerrar cuenta
+  - abrir una cuenta
+  - apertura de cuenta
+
+- nombre: Consulta de Saldos
+  macro: Cuentas y Productos
+  descripcion: Consultas para conocer el saldo, dinero disponible o cupo en las cuentas.
+  palabras_clave:
+  - saldo
+  - saldos
+  - cuanto hay
+  - cuánto hay
+  - cuanto tengo
+  - cuánto tengo
+  - dinero disponible
+  - saber el saldo
+  - consultar saldo
+  - revisar saldo
+  - ver mi saldo
+
+- nombre: CDT e Inversiones
+  macro: Cuentas y Productos
+  descripcion: Preguntas sobre CDT, depósitos a término o inversiones.
+  palabras_clave:
+  - cdt
+  - certificado deposito
+  - deposito a termino
+  - depósito a término
+  - inversion
+  - inversión
+  - invertir
+
+- nombre: Productos y Cuentas General
+  macro: Cuentas y Productos
+  descripcion: Consultas generales sobre productos bancarios y cuentas.
+  palabras_clave:
+  - ahorra tiempo
+  - ahorrar
+  - ahorro
+  - ahorros
+  - cuenta ahorro
+  - cuenta corriente
+  - cuenta
+  - cuentas
+  - descuenta
+  - me ahorra
+  - producto
+  - productos
+  - debe
+  - debo
+  - deuda
+  - en mora
+
+# ─────────────────────────────────────────────
+# MACRO: Seguridad y Accesos
+# ─────────────────────────────────────────────
+- nombre: Claves y Contraseñas
+  macro: Seguridad y Accesos
+  descripcion: Problemas con claves, OTP, tokens, login, biometría o verificación de identidad.
+  palabras_clave:
+  - clave
+  - clave segura
+  - cambio de clave
+  - cambiar clave
+  - token
+  - activar token
+  - activacion token
+  - activación token
+  - crear token
+  - otp
+  - face id
+  - huella
+  - huella digital
+  - biometria
+  - biometría
+  - desbloqueo de clave
+  - login
+  - iniciar sesion
+  - iniciar sesión
+  - autenticacion
+  - autenticación
+  - codigo verificacion
+  - código verificación
+  - codigos verificacion
+  - códigos verificación
+  - codigo de acceso
+  - código de acceso
+
+- nombre: Fraude y Robo
+  macro: Seguridad y Accesos
+  descripcion: Casos de fraude, estafas, operaciones no autorizadas, clonación o robo.
+  palabras_clave:
+  - clonacion
+  - clonación
+  - estafa
+  - fraude
+  - no autorizado
+  - operacion no solicitada
+  - operación no solicitada
+  - robo
+  - me robaron
+  - insegura
+
+- nombre: Bloqueo de Productos
+  macro: Seguridad y Accesos
+  descripcion: Solicitudes de bloqueo preventivo de tarjetas, cuentas u otros productos.
+  palabras_clave:
+  - bloquear producto
+  - bloquear cuenta
+  - bloquear tarjeta
+  - bloqueada
+  - bloqueado
+  - desbloqueo
+  - bloqueo
+  - proteccion
+  - protección
+  - protegida
+  - protegido
+  - segura
+  - seguras
+  - seguridad
+  - seguro
+  - seguros
+  - confiable
+  - confiables
+  - confianza
+  - es confiable
+  - es segura
+  - es seguro
+  - muy segura
+  - muy seguro
+
+# ─────────────────────────────────────────────
+# MACRO: App y Canales
+# ─────────────────────────────────────────────
+- nombre: Problemas Técnicos / Caídas
+  macro: App y Canales
+  descripcion: Lentitud, caídas de app, errores técnicos, congelamientos o fallas.
+  min_len: 5
+  palabras_clave:
+  - app estable
+  - bloquea continuamente
+  - cae constantemente
+  - cae mucho
+  - caido
+  - codigo errado
+  - codigo incorrecto
+  - codigo invalido
+  - código errado
+  - código incorrecto
+  - código inválido
+  - demora mucho
+  - devolviendo
+  - devuelve
+  - es estable
+  - estabilidad
+  - falla constantemente
+  - falla mucho
+  - fuera de servicio
+  - funciona mal
+  - genera problemas
+  - muy demorada
+  - muy demorado
+  - muy estable
+  - muy lenta
+  - muy lento
+  - no abre
+  - no carga
+  - no funciona
+  - no funciono
+  - no ha sido posible
+  - no llega codigo
+  - no llega código
+  - no me llega
+  - no me llega el
+  - no recibo codigo
+  - no recibo código
+  - no sirve
+  - no sirven
+  - problemas tecnicos
+  - problemas técnicos
+  - rechaza
+  - rechazada
+  - sale erro
+  - sale error
+  - sale fallido
+  - se bloquea
+  - se cae
+  - se cae mucho
+  - se congela
+  - se cuelga
+  - se demora
+  - se traba
+  - tiene problemas
+  - mi app no abre
+  - la aplicacion no funciona
+  - la aplicación no funciona
+
+- nombre: Funcionalidades Bloqueadas
+  macro: App y Canales
+  descripcion: Opciones de la app que no están disponibles o no dejan realizar acciones.
+  palabras_clave:
+  - deja hacer
+  - dejan
+  - deshabilitada
+  - deshabilitado
+  - no deja
+  - no deja activar
+  - no deja enviar
+  - no deja hacer
+  - no deja pagar
+  - no deja transferir
+  - no disponible
+  - no esta disponible
+  - no está disponible
+  - no me deja
+  - no me deja hacer
+  - no me permite
+  - no permite
+  - no puedo
+  - banca virtual
+  - banca movil
+  - banca móvil
+
+- nombre: Canales Físicos / Asesor
+  macro: App y Canales
+  descripcion: Oficinas, cajeros, corresponsales, atención en persona, servilínea o asesores.
+  palabras_clave:
+  - call center
+  - corresponsal
+  - entrega de plastico
+  - oficina
+  - oficinas
+  - punto de atencion
+  - servilinea
+  - servilínea
+  - whatsapp
+  - fila
+  - filas
+  - asesor
+  - trato
+  - tiempo de espera
+  - buen servicio
+  - excelente servicio
+  - exelente servicio
+  - servicio rapido
+  - servicio rápido
+  - servicio agil
+  - servicio ágil
+
+# ─────────────────────────────────────────────
+# MACRO: Gestión Personal
+# ─────────────────────────────────────────────
+- nombre: Actualización de Datos
+  macro: Gestión Personal
+  descripcion: Cambios de cédula, datos personales, correo o número de celular.
+  palabras_clave:
+  - actualizacion de datos
+  - actualización de datos
+  - actualizar datos
+  - cambio de cedula
+  - cambio de cédula
+  - cambiar cedula
+  - cambiar cédula
+  - cambio de numero
+  - cambio de número
+  - cambiar celular
+  - actualizar celular
+  - cambio de correo
+  - actualizar correo
+  - renovar cedula
+  - renovar cédula
+
+- nombre: Documentos y Certificados
+  macro: Gestión Personal
+  descripcion: Certificados, extractos, soportes de pago, referencias bancarias.
+  palabras_clave:
+  - certificado
+  - certificados
+  - extracto
+  - extractos
+  - referencia bancaria
+  - soporte de pago
+
+# ─────────────────────────────────────────────
+# MACRO: Información
+# ─────────────────────────────────────────────
+- nombre: Solicitud de Información
+  macro: Información
+  descripcion: Usuario solicita explicación, no entiende un proceso o pide detalles de un producto.
+  palabras_clave:
+  - aclaracion
+  - aclaración
+  - aclarar
+  - beneficios
+  - condiciones
+  - consulta
+  - consultar
+  - detalle
+  - detalles
+  - estado cuenta
+  - estado de cuenta
+  - cómo hago
+  - no entiendo
+  - no sé cómo
+  - explicación
+  - quiero saber
+
+- nombre: Información General del Banco
+  macro: Información
+  descripcion: Consultas sobre vacantes laborales, directivos u información institucional.
+  palabras_clave:
+  - vacantes laborales
+  - vacantes
+  - vacante
+  - empleo
+  - trabajar con ustedes
+  - busco trabajo
+  - director
+  - gerente
+  - presidencia
+  - presidente
+  - quien es el director
+  - trabaja con nosotros
+
+- nombre: Nuevas Funcionalidades
+  macro: Información
+  descripcion: Sugerencias, solicitudes de mejora o nuevas funciones para la app.
+  palabras_clave:
+  - apple pay
+  - billetera
+  - falta que
+  - faltan
+  - google pay
+  - hace falta
+  - mejoraria
+  - mejoren
+  - nueva funcion
+  - nueva funcionalidad
+  - puede mejorar
+  - pueden mejorar
+  - que mejoren
+  - quiero que
+
+# ─────────────────────────────────────────────
+# MACRO: Experiencia
+# ─────────────────────────────────────────────
+- nombre: Evaluación General
+  macro: Experiencia
+  descripcion: Evaluación general positiva o negativa sin especificar aspectos concretos.
+  min_len: 3
+  palabras_clave:
+  - amazing
+  - amigable
+  - bad
+  - basura
+  - bien
+  - bienn
+  - bieno
+  - buen
+  - buena
+  - buenas
+  - buenisima
+  - buenisimo
+  - bueno
+  - buenísimo
+  - buenos
+  - calidad
+  - chevere
+  - chévere
+  - comodo
+  - cómodo
+  - deficiente
+  - dificil
+  - difícil
+  - ecxelente
+  - efectiva
+  - efectivo
+  - eficacia
+  - eficaz
+  - eficiencia
+  - eficiente
+  - espectacular
+  - excelente
+  - excelentes
+  - excellent
+  - exelente
+  - experiencia
+  - genial
+  - good
+  - gracias
+  - great
+  - horrible
+  - inconveniente
+  - inconvenientes
+  - la mejor
+  - lo mejor
+  - magnífico
+  - mal
+  - mala
+  - malisima
+  - malisimo
+  - malo
+  - malísima
+  - malísimo
+  - maravillosa
+  - maravilloso
+  - me gusta mucho
+  - me gustó
+  - mejor
+  - mejora
+  - mejorar
+  - mejores
+  - mil gracias
+  - muchas gracias
+  - muy bien
+  - muy buena
+  - muy bueno
+  - muy mal
+  - muy mala
+  - muy malo
+  - nice
+  - no me gusto
+  - no me gustó
+  - normal
+  - perfecta
+  - perfecto
+  - pesima
+  - pesimo
+  - positiva
+  - positivo
+  - practico
+  - práctico
+  - pésima
+  - pésimo
+  - que mal
+  - regular
+  - satisfecha
+  - satisfecho
+  - servicio
+  - servicios
+  - sin ningun inconveniente
+  - sin ningún
+  - super
+  - súper
+  - terrible
+  - todo bien
+  - todo en orden
+  - todo ok
+  - util
+  - útil
+  - very good
+
+- nombre: Usabilidad / UX
+  macro: Experiencia
+  descripcion: Percepción sobre facilidad de uso, rapidez, diseño o interfaz de la app.
+  min_len: 5
+  palabras_clave:
+  - acceder
+  - acceso
+  - agil
+  - agilidad
+  - claro
+  - claros
+  - complicaciones
+  - complicada
+  - complicado
+  - confusa
+  - confuso
+  - dificil usar
+  - difícil usar
+  - diseño
+  - entendible
+  - es rapida
+  - es rapido
+  - es rápida
+  - es rápido
+  - facil
+  - facil acceso
+  - facil usar
+  - facilidad
+  - facilidades
+  - facilita
+  - fácil
+  - fácil acceso
+  - fácil usar
+  - fácil y rápida
+  - fácil y rápido
+  - inmediata
+  - inmediato
+  - interfaz
+  - intuitiva
+  - intuitivo
+  - manejar
+  - manejo
+  - muy complicada
+  - muy complicado
+  - muy facil
+  - muy fácil
+  - muy rapida
+  - muy rapido
+  - muy rápida
+  - muy rápido
+  - muy ágil
+  - navegacion
+  - navegación
+  - no es clara
+  - no es claro
+  - poco clara
+  - poco claro
+  - rapida
+  - rapidez
+  - rapido
+  - rápida
+  - rápido
+  - sencilla
+  - sencillez
+  - sencillo
+  - simple
+  - super facil
+  - super fácil
+  - tramite
+  - tramites
+  - usar
+  - usarla
+  - uso
+  - velocidad
+  - veloz
+  - ágil
+
+- nombre: Recomendación del Banco
+  macro: Experiencia
+  descripcion: Comentarios sobre si recomendaría o no el banco o la app.
+  min_len: 5
+  palabras_clave:
+  - amo el banco
+  - amo esta app
+  - amo la app
+  - buen banco
+  - encanta
+  - gusta
+  - la recomiendo
+  - lo recomiendo
+  - los odio
+  - mal banco
+  - me encanta
+  - me fascina
+  - me gusta
+  - mejor banco
+  - no la recomiendo
+  - no lo recomiendo
+  - odio el banco
+  - odio esta app
+  - odio la app
+  - peor banco
+  - pésimo banco
+  - recomendaria
+  - recomendaría
+  - recomiendo
+  - si la recomiendo
+  - si lo recomiendo
+
+- nombre: Publicidad / Encuestas
+  macro: Experiencia
+  descripcion: Quejas sobre anuncios, pop-ups o encuestas en la aplicación.
+  min_len: 5
+  palabras_clave:
+  - anuncios
+  - cansona
+  - cansones
+  - dejen de preguntar
+  - demasiadas preguntas
+  - encuesta
+  - encuestas
+  - fastidian
+  - fastidio
+  - fastidiosa
+  - harta de
+  - harto de
+  - molesta mucho
+  - molestan
+  - molestan mucho
+  - molestando
+  - pop up
+  - pop ups
+  - popups
+  - publicidad
+
+# ─────────────────────────────────────────────
+# MACRO: Sin Clasificar (filtros de ruido)
+# ─────────────────────────────────────────────
+- nombre: Ruido / Sin Sentido
+  macro: Sin Clasificar
+  descripcion: Textos vacíos, incoherentes, símbolos o sin contenido útil.
+  min_len: 0
+  palabras_clave:
+  - __ruido__
+  - __sin_sentido__
+  - __texto_invalido__
+  - asdfgh
+  - pqpqpq
+  - bla bla
+
+- nombre: Falta de Información / N/A
+  macro: Sin Clasificar
+  palabras_clave:
+  - n/a
+  - na
+  - no aplica
+  - sin comentario
+  - sin comentarios
+  - ninguno
+  - ninguna
+  - no tengo
+  - no se
+  - s/d
+  - vacio
+  - vacío
+  - no hay
+  - omitido
+  - omitida
+  - porque si
+  - por que si
+  - no coment
+  - no comment
+  min_len: 0
+
+- nombre: Saludos
+  macro: Sin Clasificar
+  descripcion: Únicamente saludos sin ninguna otra intención.
+  palabras_clave:
+  - ^hola$
+  - ^buenos dias$
+  - ^buenas tardes$
+  - ^buenas noches$
+  - ^hola buenos dias$
+  - ^hola buenas tardes$
+  - ^hola buenas noches$
+
+- nombre: Retroalimentación
+  macro: Sin Clasificar
+  descripcion: Confirmaciones o respuestas cortas de feedback (sí / no / ok).
+  palabras_clave:
+  - ^si$
+  - ^sí$
+  - ^no$
+  - ^ok$
+  - ^okey$
+
+- nombre: Ciudad
+  macro: Sin Clasificar
+  descripcion: Nombres de ciudades o regiones sin contexto adicional.
+  palabras_clave:
+  - cucuta
+  - cúcuta
+  - bogota
+  - bogotá
+  - medellin
+  - medellín
+  - cali
+  - barranquilla
+  - cartagena
+  - bucaramanga
+  - pereira
+  - santa marta
+  - ibague
+  - ibagué
+  - pasto
+  - manizales
+  - villavicencio
+  - neiva
+  - armenia
+  - popayan
+  - popayán
+  - sincelejo
+  - monteria
+  - montería
+  - valledupar
+  - buenaventura
+  - soledad
+  - floridablanca
+  - palmira
+  - itagui
+  - itagüí
+  - envigado
+  - dosquebradas
+  - barrancabermeja
+  - tunja
+  - riohacha
+  - quibdo
+  - quibdó
+  - yopal
+  - florencia
+  - mocoa
+  - san andres
+  - san andrés
+  - leticia
+  - arauca
+  - san jose del guaviare
+  - san josé del guaviare
+  - mitu
+  - mitú
+  - puerto carreño
+  - puerto inirida
+  - puerto inírida
+  - girardot
+  - facatativa
+  - facatativá
+  - zipaquira
+  - zipaquirá
+  - chia
+  - chía
+  - soacha
+  - rionegro
+  - tuluá
+  - tulua
+  - magangue
+  - magangué
+  - turbo
+  - apartado
+  - apartadó
+  - maicao
+  - pitalito
+  - fusagasuga
+  - fusagasugá
+  - chiquinquira
+  - chiquinquirá
+  - sogamoso
+  - duitama
+
+- nombre: Insultos
+  macro: Sin Clasificar
+  descripcion: Comentarios ofensivos o groserías.
+  palabras_clave:
+  - hp
+  - hps
+  - hijueputa
+  - hijueputas
+  - hpta
+  - hptas
+  - malparido
+  - malparidos
+  - gonorrea
+  - mierda
+  - puta
+  - putas
+  - pendejo
+  - idiota
+  - imbecil
+  - imbécil
+  - estupido
+  - estúpido
+
+- nombre: Error de Tipeo u Ortografía
+  macro: Sin Clasificar
+  descripcion: Mensajes con errores ortográficos severos que requieren revisión HITL.
+  palabras_clave: []
+
+# ─────────────────────────────────────────────
+# MACRO: Gestión Personal (adicionales)
+# ─────────────────────────────────────────────
+- nombre: Seguimiento de Radicado
+  macro: Gestión Personal
+  descripcion: Consultas sobre el estado de un radicado, solicitud o trámite en curso.
+  palabras_clave:
+  - radicado
+  - numero de radicado
+  - número de radicado
+  - seguimiento
+  - seguimiento de radicado
+  - estado de mi solicitud
+  - estado de mi tramite
+  - estado de mi trámite
+  - mi solicitud
+  - solicitud pendiente
+
+- nombre: Centrales de Riesgo
+  macro: Gestión Personal
+  descripcion: Consultas sobre reporte en centrales de riesgo, datacrédito, scoring crediticio.
+  palabras_clave:
+  - centrales de riesgo
+  - datacredito
+  - datacrédito
+  - buro
+  - buró
+  - reporte negativo
+  - reportado en
+  - reportar en
+  - historial crediticio
+  - score crediticio
+
+# ─────────────────────────────────────────────
+# MACRO: Información (adicionales)
+# ─────────────────────────────────────────────
+- nombre: Asesoría Comercial
+  macro: Información
+  descripcion: Solicitudes de asesoría para adquirir productos, inversiones u ofertas comerciales.
+  palabras_clave:
+  - asesoria comercial
+  - asesoría comercial
+  - asesor comercial
+  - quiero que me asesoren
+  - necesito asesoria
+  - necesito asesoría
+  - oferta comercial
+  - oferta de productos
+  - quiero adquirir
+  - quiero contratar
+
+- nombre: PQR
+  macro: Información
+  descripcion: Peticiones, quejas o reclamos formales ante el banco.
+  palabras_clave:
+  - pqr
+  - pqrs
+  - peticion
+  - petición
+  - queja
+  - quejas
+  - reclamo
+  - reclamos
+  - formal
+  - interponer
+  - radicar queja
+  - radicar reclamo
+  - derecho de peticion
+  - derecho de petición
+
+# ─────────────────────────────────────────────
+# MACRO: Sin Clasificar (adicionales)
+# ─────────────────────────────────────────────
+- nombre: Fuera de Alcance
+  macro: Sin Clasificar
+  descripcion: Mensajes sobre temas que el asistente no puede resolver (fuera del scope bancario).
+  palabras_clave:
+  - fuera de alcance
+  - no puedo ayudarte con eso
+  - no es mi competencia
+  - tema no relacionado
+  - asunto externo
+
+- nombre: Otros
+  macro: Otros
+  descripcion: Mensajes que no encajan en ninguna categoría conocida.
+  palabras_clave: []
+
+# ─────────────────────────────────────────────
+# MACRO: Encuestas
+# ─────────────────────────────────────────────
+- nombre: Encuesta
+  macro: Encuestas
+  descripcion: Respuestas de encuesta de satisfacción al final de la conversación. Incluye valoraciones positivas y negativas.
+  palabras_clave:
+  - "[survey]"
+  - "[survey] me fue útil la información"
+  - "[survey] no me fue útil la información"
+  - me fue útil la información
+  - no me fue útil la información
+  - fue útil
+  - no fue útil
+
+otros: Otros

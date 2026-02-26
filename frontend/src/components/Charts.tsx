@@ -14,9 +14,18 @@ interface ChartsProps {
   endDate?: string;
 }
 
+interface TemporalData {
+  daily_volume: Record<string, number>;
+  hourly_volume: Record<string, number>;
+}
+interface CategoricalData {
+  top_intents: Record<string, number>;
+  sentiment_distribution: Record<string, number>;
+}
+
 export const Charts = ({ startDate, endDate }: ChartsProps) => {
-  const [temporalData, setTemporalData] = useState<any>(null);
-  const [categoricalData, setCategoricalData] = useState<any>(null);
+  const [temporalData, setTemporalData] = useState<TemporalData | null>(null);
+  const [categoricalData, setCategoricalData] = useState<CategoricalData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,8 +62,8 @@ export const Charts = ({ startDate, endDate }: ChartsProps) => {
   );
 
   // Prepare data for Recharts
-  const dailyData = Object.entries(temporalData.daily_volume).map(([date, count]) => ({ date, count })).sort((a: any, b: any) => a.date.localeCompare(b.date));
-  const hourlyData = Object.entries(temporalData.hourly_volume).map(([hour, count]) => ({ hour: parseInt(hour), count })).sort((a: any, b: any) => a.hour - b.hour);
+  const dailyData = Object.entries(temporalData.daily_volume).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+  const hourlyData = Object.entries(temporalData.hourly_volume).map(([hour, count]) => ({ hour: parseInt(hour), count })).sort((a, b) => a.hour - b.hour);
   
   const intentData = Object.entries(categoricalData.top_intents).map(([name, value]) => ({ name, value })).slice(0, 10);
   const sentimentData = Object.entries(categoricalData.sentiment_distribution).map(([name, value]) => ({ name, value }));
@@ -128,7 +137,7 @@ export const Charts = ({ startDate, endDate }: ChartsProps) => {
                             fill="#8884d8"
                             dataKey="value"
                         >
-                            {sentimentData.map((_entry: any, index: number) => (
+                            {sentimentData.map((_entry: {name: string, value: number}, index: number) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
