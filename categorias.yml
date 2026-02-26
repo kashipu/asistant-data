@@ -1043,4 +1043,26 @@ categorias:
       - no me fue útil la información
       - fue útil
       - no fue útil
+  - nombre: Canales Digitales
+    macro: Funcionalidades Bloqueadas
+    descripcion: Usuario consulta sobre la aplicación móvil, banca virtual u otros canales digitales.
+    palabras_clave:
+      - banca movil
+      - banca virtual
+      - app
+      - aplicacion
+      - canales digitales
+      - portal transaccional
+      - canal virtual
+  - nombre: Información de Crédito
+    macro: Créditos y Préstamos
+    descripcion: Consulta sobre plazos, cuotas y datos o número del crédito.
+    palabras_clave:
+      - plazos del credito
+      - datos del credito
+      - numero de credito
+      - cuotas
+      - informacion del credito
+      - detalles del credito
+      - saldo del prestamo
 otros: Otros
