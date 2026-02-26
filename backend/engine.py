@@ -19,11 +19,6 @@ class DataEngine:
             self.referrals_df = None
             self.failures_df = None
             
-            # Caches
-            self.thread_lengths = None
-            self.servilinea_threads = set()
-            self.empty_msg_threads = set()
-            
             self._initialize()
 
     @staticmethod
@@ -37,38 +32,48 @@ class DataEngine:
         start_time = time.time()
         
         # 1. Load Core Data
-        self.df = load_data()
+        df = load_data()
         
         # 2. Pre-compute Thread Metadata (In-Memory)
-        self.thread_lengths = self.df.groupby('thread_id').size()
+        thread_lengths = df.groupby('thread_id').size() if not df.empty else pd.Series(dtype=int)
         
         # Empty messages check
-        self.empty_msg_threads = set(self.df[self.df['text'].str.strip() == '']['thread_id'].unique())
+        empty_msg_threads = set()
+        if not df.empty and 'text' in df.columns:
+            empty_msg_threads = set(df[df['text'].str.strip() == '']['thread_id'].unique())
         
         # 3. Load or Compute Derived Analysis (Persisted)
-        self._load_or_compute_referrals()
-        self._load_or_compute_failures()
+        referrals_df, servilinea_threads = self._load_or_compute_referrals(df)
+        failures_df = self._load_or_compute_failures(df)
+        
+        # 4. Atomic Swap
+        self.df = df
+        self.thread_lengths = thread_lengths
+        self.empty_msg_threads = empty_msg_threads
+        self.referrals_df = referrals_df
+        self.servilinea_threads = servilinea_threads
+        self.failures_df = failures_df
         
         print(f"Data Engine initialized in {time.time() - start_time:.2f}s")
     
     def _get_db_conn(self):
         return sqlite3.connect(DB_PATH)
 
-    def _load_or_compute_referrals(self):
+    def _load_or_compute_referrals(self, df):
+        referrals_df = pd.DataFrame()
+        servilinea_threads = set()
+        
         conn = self._get_db_conn()
         try:
             print("Loading referrals from DB...")
-            self.referrals_df = pd.read_sql("SELECT * FROM referrals", conn)
-            # Quick validation: checking if referrals match current data version could be complex
-            # For now, we assume if table exists, it's valid. 
-            # In prod, we'd check a version hash.
-            if self.referrals_df.empty and not self.df.empty:
+            referrals_df = pd.read_sql("SELECT * FROM referrals", conn)
+            if referrals_df.empty and not df.empty:
                  raise Exception("Empty referrals table") # Force re-compute
         except Exception:
             print("Referrals not found or empty in DB. Computing...")
-            self.referrals_df = detect_referrals(self.df)
-            if not self.referrals_df.empty:
-                self.referrals_df.to_sql('referrals', conn, if_exists='replace', index=False)
+            referrals_df = detect_referrals(df)
+            if not referrals_df.empty:
+                referrals_df.to_sql('referrals', conn, if_exists='replace', index=False)
                 # Index
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_ref_thread_id ON referrals (thread_id)")
                 conn.commit()
@@ -76,28 +81,35 @@ class DataEngine:
             conn.close()
             
         # Cache Servilinea Threads Set
-        if not self.referrals_df.empty:
-            self.servilinea_threads = set(self.referrals_df['thread_id'].unique())
+        if not referrals_df.empty:
+            servilinea_threads = set(referrals_df['thread_id'].unique())
+            
+        return referrals_df, servilinea_threads
 
-    def _load_or_compute_failures(self):
+    def _load_or_compute_failures(self, df):
+        failures_df = pd.DataFrame()
         conn = self._get_db_conn()
         try:
             print("Loading failures from DB...")
-            self.failures_df = pd.read_sql("SELECT * FROM failures", conn)
-            if self.failures_df.empty and not self.df.empty:
+            failures_df = pd.read_sql("SELECT * FROM failures", conn)
+            if failures_df.empty and not df.empty:
                  raise Exception("Empty failures table")
         except Exception:
             print("Failures not found in DB. Computing...")
-            self.failures_df = detect_failures(self.df)
-            if not self.failures_df.empty:
+            failures_df = detect_failures(df)
+            if not failures_df.empty:
                 # Convert list/dict columns if any (failures usually flat)
-                self.failures_df.to_sql('failures', conn, if_exists='replace', index=False)
+                failures_df.to_sql('failures', conn, if_exists='replace', index=False)
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_fail_thread_id ON failures (thread_id)")
                 conn.commit()
         finally:
             conn.close()
+        return failures_df
 
     def get_messages(self, start_date=None, end_date=None):
+        if self.df is None:
+            return pd.DataFrame()
+            
         df_filtered = self.df
         if (start_date or end_date) and not df_filtered.empty and 'fecha' in df_filtered.columns:
             mask = pd.Series(True, index=df_filtered.index)
@@ -125,12 +137,6 @@ class DataEngine:
 
     def reload(self):
         print("Reloading Data Engine...")
-        self.df = None
-        self.referrals_df = None
-        self.failures_df = None
-        self.thread_lengths = None
-        self.servilinea_threads = set()
-        self.empty_msg_threads = set()
         self._initialize()
 
     def update_message(self, message_id: str, updates: dict):
