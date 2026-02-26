@@ -5,6 +5,11 @@ import sqlite3
 import yaml
 import re
 import unicodedata
+try:
+    from pysentimiento import create_analyzer
+    HAS_PYSENTIMIENTO = True
+except ImportError:
+    HAS_PYSENTIMIENTO = False
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "data-asistente.csv")
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "chat_data.db")
@@ -223,6 +228,19 @@ def ingest_data():
 
     # Now fill remaining NaNs with neutral (rows with no matching thread)
     if 'sentiment' in df.columns:
+        if HAS_PYSENTIMIENTO:
+            print("  Running pysentimiento fallback for human messages without sentiment...")
+            needs_sent_mask = (df['type'] == 'human') & df['sentiment'].isna() & df['text'].notna()
+            texts_to_analyze = df.loc[needs_sent_mask, 'text'].tolist()
+            if texts_to_analyze:
+                analyzer = create_analyzer(task="sentiment", lang="es")
+                print(f"  Analyzing {len(texts_to_analyze)} texts with pysentimiento...")
+                results = analyzer.predict(texts_to_analyze)
+                sentiment_map = {'POS': 'positivo', 'NEG': 'negativo', 'NEU': 'neutral'}
+                mapped_results = [sentiment_map.get(r.output, 'neutral') for r in results]
+                df.loc[needs_sent_mask, 'sentiment'] = mapped_results
+                print(f"  Sentiment NLP fallback matched: {len(mapped_results)} additional messages")
+                
         df['sentiment'] = df['sentiment'].fillna('neutral')
 
     # ---------------------------------------------------------
