@@ -4,6 +4,7 @@ import yaml
 import os
 import shutil
 import re
+import unicodedata
 from pydantic import BaseModel
 from typing import Optional
 
@@ -21,6 +22,7 @@ class CategorizeRequest(BaseModel):
 def clean_text_for_nlp(text):
     if pd.isna(text): return ""
     text = str(text).lower()
+    text = ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
     text = re.sub(r'[^\w\s\^\$]', '', text)
     return text.strip()
 

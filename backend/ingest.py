@@ -4,6 +4,7 @@ import os
 import sqlite3
 import yaml
 import re
+import unicodedata
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "data-asistente.csv")
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "chat_data.db")
@@ -40,6 +41,7 @@ INTENCION_HOMOLOGACION = {
 def _clean_for_nlp(text):
     if pd.isna(text): return ""
     text = str(text).lower()
+    text = ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
     text = re.sub(r'[^\w\s]', '', text)
     return text.strip()
 

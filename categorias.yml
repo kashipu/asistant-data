@@ -1,15 +1,5 @@
 version: v12-20260226-macro-subcategoria
-# Estructura: cada categoría tiene un campo 'macro' (agrupador) y 'nombre' (subcategoría).
-# El campo 'macro' se usa para agrupar en gráficas y FAQs.
-# Si una categoría ES la macro (sin subcategoría específica), macro == nombre.
-# min_len: longitud mínima del texto para que aplique (default: 1)
-# Las palabras con ^ o $ se tratan como regex de línea completa.
-
 categorias:
-
-# ─────────────────────────────────────────────
-# MACRO: Transferencias
-# ─────────────────────────────────────────────
 - nombre: Envío de Dinero
   macro: Transferencias
   descripcion: Usuario quiere enviar o transferir dinero a otra cuenta, banco o persona.
@@ -39,10 +29,10 @@ categorias:
   - llaves
   - avances
   - movimiento de dinero
-
 - nombre: Transferencia Fallida / No Llegó
   macro: Transferencias
-  descripcion: Transferencia realizada pero el dinero no llegó, está pendiente o fue rechazada.
+  descripcion: Transferencia realizada pero el dinero no llegó, está pendiente o fue
+    rechazada.
   palabras_clave:
   - no aparece el dinero
   - dinero no llegó
@@ -59,7 +49,6 @@ categorias:
   - no llego el dinero
   - transferencia no llego
   - transferencia no llegó
-
 - nombre: Consulta de Transferencias
   macro: Transferencias
   descripcion: Consultas generales sobre cómo funciona el proceso de transferencias.
@@ -69,10 +58,6 @@ categorias:
   - transfer
   - movimiento
   - movimientos
-
-# ─────────────────────────────────────────────
-# MACRO: Pagos
-# ─────────────────────────────────────────────
 - nombre: Pago de Crédito / Préstamo
   macro: Pagos
   descripcion: Pagos de cuotas de crédito, préstamos, libre inversión u obligaciones.
@@ -96,7 +81,6 @@ categorias:
   - abono crédito
   - abono prestamo
   - pagar obligacion
-
 - nombre: Pago de Servicios / Facturas
   macro: Pagos
   descripcion: Pagos de servicios públicos, facturas, impuestos, planilla PILA.
@@ -118,7 +102,6 @@ categorias:
   - pago rapido
   - pago rápido
   - avalpay
-
 - nombre: Pago con QR / PSE / Digital
   macro: Pagos
   descripcion: Pagos digitales mediante QR, PSE u otros medios electrónicos.
@@ -131,7 +114,6 @@ categorias:
   - pago electrónico
   - pago movil
   - pago móvil
-
 - nombre: Consulta de Pagos
   macro: Pagos
   descripcion: Consultas generales sobre pagos o cómo realizarlos.
@@ -139,10 +121,6 @@ categorias:
   - pago
   - pagos
   - pagar
-
-# ─────────────────────────────────────────────
-# MACRO: Tarjetas
-# ─────────────────────────────────────────────
 - nombre: Tarjeta de Crédito
   macro: Tarjetas
   descripcion: Consultas, problemas o solicitudes relacionadas con tarjeta de crédito.
@@ -161,7 +139,6 @@ categorias:
   - modificar cuotas
   - plastico
   - plástico
-
 - nombre: Tarjeta Débito
   macro: Tarjetas
   descripcion: Consultas, problemas o solicitudes relacionadas con tarjeta débito.
@@ -171,26 +148,21 @@ categorias:
   - tarjeta de debito
   - tarjeta de débito
   - td
-
 - nombre: Retiro sin Tarjeta
   macro: Tarjetas
   descripcion: Retiros de efectivo sin usar tarjeta física.
   palabras_clave:
   - retiro sin tarjeta
-
 - nombre: Consulta de Tarjetas
   macro: Tarjetas
   descripcion: Consultas generales sobre tarjetas sin especificar tipo.
   palabras_clave:
   - tarjeta
   - tarjetas
-
-# ─────────────────────────────────────────────
-# MACRO: Créditos y Préstamos
-# ─────────────────────────────────────────────
 - nombre: Solicitud de Crédito
   macro: Créditos y Préstamos
-  descripcion: Usuario quiere solicitar, conocer requisitos u obtener un crédito o préstamo.
+  descripcion: Usuario quiere solicitar, conocer requisitos u obtener un crédito o
+    préstamo.
   palabras_clave:
   - solicitar credito
   - solicitar crédito
@@ -209,10 +181,11 @@ categorias:
   - hipoteca
   - credito de consumo
   - credito consumo
-
+  - prestamos
 - nombre: Cuotas y Plazos de Crédito
   macro: Créditos y Préstamos
-  descripcion: Preguntas sobre cuántas cuotas, plazos, monto de cuota o modificación de crédito.
+  descripcion: Preguntas sobre cuántas cuotas, plazos, monto de cuota o modificación
+    de crédito.
   palabras_clave:
   - cuota
   - cuotas
@@ -223,10 +196,10 @@ categorias:
   - número de cuotas
   - cuanto me prestan
   - cuánto me prestan
-
 - nombre: Cobros e Intereses
   macro: Créditos y Préstamos
-  descripcion: Preguntas sobre tasas, intereses, comisiones, cobros inesperados o cuotas de manejo.
+  descripcion: Preguntas sobre tasas, intereses, comisiones, cobros inesperados o
+    cuotas de manejo.
   palabras_clave:
   - 4 x 1000
   - 4*1000
@@ -247,10 +220,6 @@ categorias:
   - tarifas
   - desmarcacion
   - desmarcación
-
-# ─────────────────────────────────────────────
-# MACRO: Cuentas y Productos
-# ─────────────────────────────────────────────
 - nombre: Apertura / Cancelación de Cuenta
   macro: Cuentas y Productos
   descripcion: Solicitudes para abrir, cerrar o cancelar una cuenta bancaria.
@@ -261,7 +230,6 @@ categorias:
   - cerrar cuenta
   - abrir una cuenta
   - apertura de cuenta
-
 - nombre: Consulta de Saldos
   macro: Cuentas y Productos
   descripcion: Consultas para conocer el saldo, dinero disponible o cupo en las cuentas.
@@ -277,7 +245,6 @@ categorias:
   - consultar saldo
   - revisar saldo
   - ver mi saldo
-
 - nombre: CDT e Inversiones
   macro: Cuentas y Productos
   descripcion: Preguntas sobre CDT, depósitos a término o inversiones.
@@ -289,7 +256,6 @@ categorias:
   - inversion
   - inversión
   - invertir
-
 - nombre: Productos y Cuentas General
   macro: Cuentas y Productos
   descripcion: Consultas generales sobre productos bancarios y cuentas.
@@ -310,13 +276,10 @@ categorias:
   - debo
   - deuda
   - en mora
-
-# ─────────────────────────────────────────────
-# MACRO: Seguridad y Accesos
-# ─────────────────────────────────────────────
 - nombre: Claves y Contraseñas
   macro: Seguridad y Accesos
-  descripcion: Problemas con claves, OTP, tokens, login, biometría o verificación de identidad.
+  descripcion: Problemas con claves, OTP, tokens, login, biometría o verificación
+    de identidad.
   palabras_clave:
   - clave
   - clave segura
@@ -345,7 +308,6 @@ categorias:
   - códigos verificación
   - codigo de acceso
   - código de acceso
-
 - nombre: Fraude y Robo
   macro: Seguridad y Accesos
   descripcion: Casos de fraude, estafas, operaciones no autorizadas, clonación o robo.
@@ -360,7 +322,6 @@ categorias:
   - robo
   - me robaron
   - insegura
-
 - nombre: Bloqueo de Productos
   macro: Seguridad y Accesos
   descripcion: Solicitudes de bloqueo preventivo de tarjetas, cuentas u otros productos.
@@ -389,10 +350,6 @@ categorias:
   - es seguro
   - muy segura
   - muy seguro
-
-# ─────────────────────────────────────────────
-# MACRO: App y Canales
-# ─────────────────────────────────────────────
 - nombre: Problemas Técnicos / Caídas
   macro: App y Canales
   descripcion: Lentitud, caídas de app, errores técnicos, congelamientos o fallas.
@@ -455,7 +412,6 @@ categorias:
   - mi app no abre
   - la aplicacion no funciona
   - la aplicación no funciona
-
 - nombre: Funcionalidades Bloqueadas
   macro: App y Canales
   descripcion: Opciones de la app que no están disponibles o no dejan realizar acciones.
@@ -481,10 +437,10 @@ categorias:
   - banca virtual
   - banca movil
   - banca móvil
-
 - nombre: Canales Físicos / Asesor
   macro: App y Canales
-  descripcion: Oficinas, cajeros, corresponsales, atención en persona, servilínea o asesores.
+  descripcion: Oficinas, cajeros, corresponsales, atención en persona, servilínea
+    o asesores.
   palabras_clave:
   - call center
   - corresponsal
@@ -507,10 +463,6 @@ categorias:
   - servicio rápido
   - servicio agil
   - servicio ágil
-
-# ─────────────────────────────────────────────
-# MACRO: Gestión Personal
-# ─────────────────────────────────────────────
 - nombre: Actualización de Datos
   macro: Gestión Personal
   descripcion: Cambios de cédula, datos personales, correo o número de celular.
@@ -530,7 +482,6 @@ categorias:
   - actualizar correo
   - renovar cedula
   - renovar cédula
-
 - nombre: Documentos y Certificados
   macro: Gestión Personal
   descripcion: Certificados, extractos, soportes de pago, referencias bancarias.
@@ -541,13 +492,10 @@ categorias:
   - extractos
   - referencia bancaria
   - soporte de pago
-
-# ─────────────────────────────────────────────
-# MACRO: Información
-# ─────────────────────────────────────────────
 - nombre: Solicitud de Información
   macro: Información
-  descripcion: Usuario solicita explicación, no entiende un proceso o pide detalles de un producto.
+  descripcion: Usuario solicita explicación, no entiende un proceso o pide detalles
+    de un producto.
   palabras_clave:
   - aclaracion
   - aclaración
@@ -565,7 +513,6 @@ categorias:
   - no sé cómo
   - explicación
   - quiero saber
-
 - nombre: Información General del Banco
   macro: Información
   descripcion: Consultas sobre vacantes laborales, directivos u información institucional.
@@ -582,7 +529,6 @@ categorias:
   - presidente
   - quien es el director
   - trabaja con nosotros
-
 - nombre: Nuevas Funcionalidades
   macro: Información
   descripcion: Sugerencias, solicitudes de mejora o nuevas funciones para la app.
@@ -601,10 +547,6 @@ categorias:
   - pueden mejorar
   - que mejoren
   - quiero que
-
-# ─────────────────────────────────────────────
-# MACRO: Experiencia
-# ─────────────────────────────────────────────
 - nombre: Evaluación General
   macro: Experiencia
   descripcion: Evaluación general positiva o negativa sin especificar aspectos concretos.
@@ -710,10 +652,10 @@ categorias:
   - util
   - útil
   - very good
-
 - nombre: Usabilidad / UX
   macro: Experiencia
-  descripcion: Percepción sobre facilidad de uso, rapidez, diseño o interfaz de la app.
+  descripcion: Percepción sobre facilidad de uso, rapidez, diseño o interfaz de la
+    app.
   min_len: 5
   palabras_clave:
   - acceder
@@ -787,7 +729,6 @@ categorias:
   - velocidad
   - veloz
   - ágil
-
 - nombre: Recomendación del Banco
   macro: Experiencia
   descripcion: Comentarios sobre si recomendaría o no el banco o la app.
@@ -819,7 +760,6 @@ categorias:
   - recomiendo
   - si la recomiendo
   - si lo recomiendo
-
 - nombre: Publicidad / Encuestas
   macro: Experiencia
   descripcion: Quejas sobre anuncios, pop-ups o encuestas en la aplicación.
@@ -845,10 +785,6 @@ categorias:
   - pop ups
   - popups
   - publicidad
-
-# ─────────────────────────────────────────────
-# MACRO: Sin Clasificar (filtros de ruido)
-# ─────────────────────────────────────────────
 - nombre: Ruido / Sin Sentido
   macro: Sin Clasificar
   descripcion: Textos vacíos, incoherentes, símbolos o sin contenido útil.
@@ -860,7 +796,6 @@ categorias:
   - asdfgh
   - pqpqpq
   - bla bla
-
 - nombre: Falta de Información / N/A
   macro: Sin Clasificar
   palabras_clave:
@@ -884,7 +819,6 @@ categorias:
   - no coment
   - no comment
   min_len: 0
-
 - nombre: Saludos
   macro: Sin Clasificar
   descripcion: Únicamente saludos sin ninguna otra intención.
@@ -896,7 +830,6 @@ categorias:
   - ^hola buenos dias$
   - ^hola buenas tardes$
   - ^hola buenas noches$
-
 - nombre: Retroalimentación
   macro: Sin Clasificar
   descripcion: Confirmaciones o respuestas cortas de feedback (sí / no / ok).
@@ -906,7 +839,6 @@ categorias:
   - ^no$
   - ^ok$
   - ^okey$
-
 - nombre: Ciudad
   macro: Sin Clasificar
   descripcion: Nombres de ciudades o regiones sin contexto adicional.
@@ -987,7 +919,6 @@ categorias:
   - chiquinquirá
   - sogamoso
   - duitama
-
 - nombre: Insultos
   macro: Sin Clasificar
   descripcion: Comentarios ofensivos o groserías.
@@ -1010,15 +941,11 @@ categorias:
   - imbécil
   - estupido
   - estúpido
-
+  - rateros
 - nombre: Error de Tipeo u Ortografía
   macro: Sin Clasificar
   descripcion: Mensajes con errores ortográficos severos que requieren revisión HITL.
   palabras_clave: []
-
-# ─────────────────────────────────────────────
-# MACRO: Gestión Personal (adicionales)
-# ─────────────────────────────────────────────
 - nombre: Seguimiento de Radicado
   macro: Gestión Personal
   descripcion: Consultas sobre el estado de un radicado, solicitud o trámite en curso.
@@ -1033,10 +960,10 @@ categorias:
   - estado de mi trámite
   - mi solicitud
   - solicitud pendiente
-
 - nombre: Centrales de Riesgo
   macro: Gestión Personal
-  descripcion: Consultas sobre reporte en centrales de riesgo, datacrédito, scoring crediticio.
+  descripcion: Consultas sobre reporte en centrales de riesgo, datacrédito, scoring
+    crediticio.
   palabras_clave:
   - centrales de riesgo
   - datacredito
@@ -1048,13 +975,10 @@ categorias:
   - reportar en
   - historial crediticio
   - score crediticio
-
-# ─────────────────────────────────────────────
-# MACRO: Información (adicionales)
-# ─────────────────────────────────────────────
 - nombre: Asesoría Comercial
   macro: Información
-  descripcion: Solicitudes de asesoría para adquirir productos, inversiones u ofertas comerciales.
+  descripcion: Solicitudes de asesoría para adquirir productos, inversiones u ofertas
+    comerciales.
   palabras_clave:
   - asesoria comercial
   - asesoría comercial
@@ -1066,7 +990,6 @@ categorias:
   - oferta de productos
   - quiero adquirir
   - quiero contratar
-
 - nombre: PQR
   macro: Información
   descripcion: Peticiones, quejas o reclamos formales ante el banco.
@@ -1085,38 +1008,30 @@ categorias:
   - radicar reclamo
   - derecho de peticion
   - derecho de petición
-
-# ─────────────────────────────────────────────
-# MACRO: Sin Clasificar (adicionales)
-# ─────────────────────────────────────────────
 - nombre: Fuera de Alcance
   macro: Sin Clasificar
-  descripcion: Mensajes sobre temas que el asistente no puede resolver (fuera del scope bancario).
+  descripcion: Mensajes sobre temas que el asistente no puede resolver (fuera del
+    scope bancario).
   palabras_clave:
   - fuera de alcance
   - no puedo ayudarte con eso
   - no es mi competencia
   - tema no relacionado
   - asunto externo
-
 - nombre: Otros
   macro: Otros
   descripcion: Mensajes que no encajan en ninguna categoría conocida.
   palabras_clave: []
-
-# ─────────────────────────────────────────────
-# MACRO: Encuestas
-# ─────────────────────────────────────────────
 - nombre: Encuesta
   macro: Encuestas
-  descripcion: Respuestas de encuesta de satisfacción al final de la conversación. Incluye valoraciones positivas y negativas.
+  descripcion: Respuestas de encuesta de satisfacción al final de la conversación.
+    Incluye valoraciones positivas y negativas.
   palabras_clave:
-  - "[survey]"
-  - "[survey] me fue útil la información"
-  - "[survey] no me fue útil la información"
+  - '[survey]'
+  - '[survey] me fue útil la información'
+  - '[survey] no me fue útil la información'
   - me fue útil la información
   - no me fue útil la información
   - fue útil
   - no fue útil
-
 otros: Otros
