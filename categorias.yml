@@ -225,9 +225,6 @@ categorias:
       Preguntas sobre tasas, intereses, comisiones, cobros inesperados o
       cuotas de manejo.
     palabras_clave:
-      - 4 x 1000
-      - 4*1000
-      - 4x1000
       - comision
       - comisión
       - cuota de manejo
@@ -244,6 +241,15 @@ categorias:
       - tarifas
       - desmarcacion
       - desmarcación
+  - nombre: Procesos sobre Cuentas
+    macro: Cuentas y Productos
+    descripcion: Procesos relacionados con cuentas, como la exención del 4x1000 u otros trámites asociados.
+    palabras_clave:
+      - 4 x 1000
+      - 4*1000
+      - 4x1000
+      - proceso cuenta
+      - tramites cuenta
   - nombre: Apertura / Cancelación de Cuenta
     macro: Cuentas y Productos
     descripcion: Solicitudes para abrir, cerrar o cancelar una cuenta bancaria.
