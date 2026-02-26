@@ -15,7 +15,25 @@ def load_data():
         if os.path.exists(DATA_PATH):
             print("Database not found. Running ingestion...")
             from .ingest import ingest_data
-            ingest_data()
+            from .engine import DataEngine
+            
+            engine = DataEngine.get_instance()
+            engine.update_etl_state({
+                "is_running": True, 
+                "start_time": time.time()
+            })
+            
+            try:
+                ingest_data()
+                engine.update_etl_state({"last_status": "success"})
+            except Exception:
+                engine.update_etl_state({"last_status": "error"})
+                raise
+            finally:
+                engine.update_etl_state({
+                    "is_running": False,
+                    "start_time": None
+                })
         else:
             raise FileNotFoundError(f"Database not found at {DB_PATH} and no CSV to ingest.")
 

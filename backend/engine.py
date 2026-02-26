@@ -18,6 +18,11 @@ class DataEngine:
             self.df = None
             self.referrals_df = None
             self.failures_df = None
+            self.etl_state = {
+                "is_running": False,
+                "start_time": None,
+                "last_status": None  # "success" | "error" | None
+            }
             
             self._initialize()
 
@@ -138,6 +143,12 @@ class DataEngine:
     def reload(self):
         print("Reloading Data Engine...")
         self._initialize()
+
+    def update_etl_state(self, updates: dict):
+        self.etl_state.update(updates)
+
+    def get_etl_status(self):
+        return self.etl_state
 
     def update_message(self, message_id: str, updates: dict):
         if self.df is not None and not self.df.empty:

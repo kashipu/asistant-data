@@ -23,12 +23,6 @@ import time
 
 app = FastAPI(title="Chatbot Analysis API")
 
-# Global state for ETL progress
-etl_state = {
-    "is_running": False,
-    "start_time": None,
-    "last_status": None  # "success" | "error" | None
-}
 
 # Setup CORS
 app.add_middleware(
@@ -338,38 +332,45 @@ def api_run_etl(background_tasks: BackgroundTasks):
     """
     Triggers the ETL pipeline to re-process data asynchronously.
     """
-    global etl_state
-    if etl_state["is_running"]:
+    engine = DataEngine.get_instance()
+    status = engine.get_etl_status()
+    
+    if status["is_running"]:
         return {"message": "ETL process is already running."}
         
-    etl_state["is_running"] = True
-    etl_state["start_time"] = time.time()
+    engine.update_etl_state({
+        "is_running": True,
+        "start_time": time.time()
+    })
 
     def task_wrapper():
-        global etl_state
         try:
             ingest_data()
-            DataEngine.get_instance().reload()
-            etl_state["last_status"] = "success"
+            engine.reload()
+            engine.update_etl_state({"last_status": "success"})
         except Exception as e:
             print(f"ETL failed: {e}")
-            etl_state["last_status"] = "error"
+            engine.update_etl_state({"last_status": "error"})
         finally:
-            etl_state["is_running"] = False
-            etl_state["start_time"] = None
+            engine.update_etl_state({
+                "is_running": False,
+                "start_time": None
+            })
             
     background_tasks.add_task(task_wrapper)
     return {"message": "ETL process started in the background."}
 
 @app.get("/api/etl/status")
 def api_get_etl_status():
-    global etl_state
+    engine = DataEngine.get_instance()
+    status = engine.get_etl_status()
+    
     elapsed = 0
-    if etl_state["is_running"] and etl_state["start_time"]:
-        elapsed = int(time.time() - etl_state["start_time"])
+    if status["is_running"] and status["start_time"]:
+        elapsed = int(time.time() - status["start_time"])
     
     return {
-        "is_running": etl_state["is_running"],
+        "is_running": status["is_running"],
         "elapsed_seconds": elapsed,
-        "last_status": etl_state["last_status"]
+        "last_status": status["last_status"]
     }

@@ -25,31 +25,46 @@ function App() {
   const [etlElapsed, setEtlElapsed] = useState(0);
   const [etlFinished, setEtlFinished] = useState<'success' | 'error' | null>(null);
 
-  // Poll ETL status
+  // Check initial ETL status and setup polling only if active
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const status = await api.getEtlStatus();
-
+        
+        // If it was running and stopped, trigger finish logic
         if (isReprocessing && !status.is_running) {
           const result = status.last_status === 'error' ? 'error' : 'success';
           setEtlFinished(result);
           setIsReprocessing(false);
-          // Reload after 3s so el usuario ve el resultado
+          // Reload after 3s to let the user see the result
           setTimeout(() => window.location.reload(), 3000);
           return;
         }
 
-        setIsReprocessing(status.is_running);
+        // Keep local state in sync
+        if (status.is_running !== isReprocessing) {
+          setIsReprocessing(status.is_running);
+        }
         setEtlElapsed(status.elapsed_seconds || 0);
       } catch (err) {
         console.error("Failed to check ETL status:", err);
       }
     };
 
-    checkStatus();
-    const interval = setInterval(checkStatus, 3000);
-    return () => clearInterval(interval);
+    // Initial check on mount
+    if (!isReprocessing) {
+        checkStatus();
+    }
+
+    // Only set interval if we are active
+    let interval: number | undefined;
+    if (isReprocessing) {
+        interval = window.setInterval(checkStatus, 3000);
+    }
+    
+    return () => {
+        if (interval) clearInterval(interval);
+    };
   }, [isReprocessing]);
 
   const handleReprocess = async () => {
