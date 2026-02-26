@@ -166,14 +166,27 @@ categorias:
       Usuario quiere solicitar, conocer requisitos u obtener un crédito o
       préstamo.
     palabras_clave:
+      - leasing
+      - leasing
+      - quiero un leasing
       - solicitar credito
       - solicitar crédito
+      - solicitar prestamo
+      - solicitar préstamo
+      - solicitar un crédito
+      - solicitar un préstamo
+      - solicitar un credito
+      - solicitar un crédito
+      - sacar un crédito
       - pedir prestamo
       - pedir préstamo
       - quiero un credito
       - quiero un crédito
+      - quiero un prestamo
+      - quiero un préstamo
       - credito de libre inversion
       - crédito de libre inversión
+      - crédito de libranza
       - libre inversion
       - libre inversión
       - prestamo personal
@@ -182,8 +195,15 @@ categorias:
       - crédito hipotecario
       - hipoteca
       - credito de consumo
+      - crédito de vehiculo
+      - crédito de vehículo
+      - crédito de automovil
+      - crédito de automóvil
+      - crédito de auto
+      - crédito de automóvil
       - credito consumo
       - prestamos
+      - prestamo
   - nombre: Cuotas y Plazos de Crédito
     macro: Créditos y Préstamos
     descripcion:
@@ -334,9 +354,12 @@ categorias:
       - bloquear producto
       - bloquear cuenta
       - bloquear tarjeta
-      - bloqueada
-      - bloqueado
+      - desbloquear producto
+      - desbloquear cuenta
+      - desbloquear tarjeta
       - desbloqueo
+      - bloquear
+      - desbloqueado
       - bloqueo
       - proteccion
       - protección
@@ -457,6 +480,7 @@ categorias:
       - fila
       - filas
       - asesor
+      - agente
       - trato
       - tiempo de espera
       - buen servicio
