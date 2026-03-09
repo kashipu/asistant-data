@@ -9,6 +9,9 @@ categorias:
   - enviar efectivo
   - mandar dinero
   - mandar plata
+  - como mandar la plata
+  - como mando plata
+  - como envio plata
   - hacer transferencia
   - hacer transferencias
   - realizar transferencia
@@ -210,6 +213,7 @@ categorias:
   - 4 x 1000
   - 4*1000
   - 4x1000
+  - 4xmil
   - proceso cuenta
   - tramites cuenta
 - nombre: Apertura / Cancelación de Cuenta
@@ -952,6 +956,30 @@ categorias:
   - pqpqpq
   - bla bla
   - el numero
+- nombre: Campañas y Publicidad
+  macro: Campañas
+  descripcion: Consultas sobre campañas promocionales, rifas, sorteos, eventos deportivos (mundial, copa del mundo) y participación en promociones del banco.
+  palabras_clave:
+  - mundial
+  - copa del mundo
+  - rifas del mundial
+  - participar en las rifas
+  - participar en la rifa
+  - quiero participar
+  - rifa
+  - rifas
+  - sorteo
+  - sorteos
+  - promocion
+  - promociones
+  - campaña
+  - campañas
+  - publicidad
+  - premio
+  - premios
+  - concurso
+  - copa america
+  - futbol
 - nombre: Fuera de Alcance
   macro: Sin Clasificar
   descripcion: Mensajes sobre temas que el asistente no puede resolver (fuera del scope bancario).

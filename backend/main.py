@@ -483,7 +483,7 @@ def api_products_detailed(
 
 @app.get("/api/reports/category-threads")
 def api_category_threads(
-    macro: str = Query(...),
+    macro: str = Query(""),
     subcategory: Optional[str] = Query(None),
     product: Optional[str] = Query(None),
     cross_category: Optional[str] = Query(None),
@@ -492,6 +492,8 @@ def api_category_threads(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     exclude_greetings: bool = Query(False),
+    product_macro: Optional[str] = Query(None),
+    failures_only: bool = Query(False),
 ):
     engine = DataEngine.get_instance()
     df = engine.get_messages(start_date, end_date)
@@ -506,6 +508,8 @@ def api_category_threads(
         page=page,
         limit=limit,
         exclude_greetings=exclude_greetings,
+        product_macro=product_macro,
+        failures_only=failures_only,
     )
 
 

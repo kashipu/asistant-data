@@ -84,6 +84,7 @@ function ProductDetail({
 }) {
   const [showThreads, setShowThreads] = useState(false);
   const [threadCategory, setThreadCategory] = useState<string | undefined>();
+  const [failuresOnly, setFailuresOnly] = useState(false);
 
   // OutcomeCards expects a "sub" shaped object — ProductItem already has the same fields
   const subShaped = {
@@ -191,13 +192,29 @@ function ProductDetail({
 
       {/* Thread list toggle */}
       <div className="px-5 pb-3 space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => { setShowThreads(!showThreads); setThreadCategory(undefined); }}
+            onClick={() => { setShowThreads(!showThreads); setThreadCategory(undefined); setFailuresOnly(false); }}
             className="text-xs font-medium text-violet-600 hover:text-violet-800 hover:underline"
           >
             {showThreads ? 'Ocultar conversaciones' : 'Ver conversaciones'}
           </button>
+          {!showThreads && prod.bot_failures.total > 0 && (
+            <button
+              onClick={() => { setShowThreads(true); setFailuresOnly(true); setThreadCategory(undefined); }}
+              className="text-xs font-medium text-rose-600 hover:text-rose-800 hover:underline"
+            >
+              Ver solo fallos ({N(prod.bot_failures.total)})
+            </button>
+          )}
+          {showThreads && failuresOnly && (
+            <button
+              onClick={() => setFailuresOnly(false)}
+              className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full hover:bg-rose-200"
+            >
+              Quitar filtro: Solo fallos
+            </button>
+          )}
           {threadCategory && (
             <button
               onClick={() => setThreadCategory(undefined)}
@@ -209,12 +226,14 @@ function ProductDetail({
         </div>
         {showThreads && (
           <ThreadListPanel
-            macro={macroName}
+            macro=""
+            productMacro={macroName}
             product={prod.name}
             subcategory={threadCategory}
             onNavigateToThread={onNavigateToThread}
             startDate={startDate}
             endDate={endDate}
+            failuresOnly={failuresOnly}
           />
         )}
       </div>

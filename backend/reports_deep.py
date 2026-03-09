@@ -437,13 +437,17 @@ def get_category_threads(df: pd.DataFrame,
                          cross_category: str = None,
                          page: int = 1,
                          limit: int = 20,
-                         exclude_greetings: bool = False) -> dict:
+                         exclude_greetings: bool = False,
+                         product_macro: str = None,
+                         failures_only: bool = False) -> dict:
     """
     Returns paginated thread list for a macro/subcategory/product combination
     with per-thread outcome indicators.
 
     cross_category: if set, only returns threads where BOTH the subcategory
     AND this cross_category appear (underlying intent drill-down).
+    product_macro: if set, filters by product_macro_yaml instead of macro_yaml.
+    failures_only: if True, only returns threads that are in failures_df.
     """
     if df is None or df.empty:
         return {"data": [], "total": 0, "page": page, "limit": limit}
@@ -452,8 +456,13 @@ def get_category_threads(df: pd.DataFrame,
     if hdf.empty:
         return {"data": [], "total": 0, "page": page, "limit": limit}
 
-    # Filter by macro
-    filtered = hdf[hdf["macro_yaml"] == macro]
+    # Filter by macro (category macro) or product_macro
+    if product_macro:
+        # Filter by product macro — for ProductsDeepPanel
+        prod_col = "product_macro_yaml" if "product_macro_yaml" in hdf.columns else "product_type"
+        filtered = hdf[hdf[prod_col] == product_macro]
+    else:
+        filtered = hdf[hdf["macro_yaml"] == macro]
     if subcategory:
         filtered = filtered[filtered["categoria_yaml"] == subcategory]
     if product:
@@ -474,17 +483,33 @@ def get_category_threads(df: pd.DataFrame,
     if exclude_greetings:
         filtered = filtered[~filtered["text"].apply(_is_pure_greeting)]
 
-    # Compute msg positions
-    hdf_sorted = hdf.sort_index()
-    hdf_sorted["msg_pos"] = hdf_sorted.groupby("thread_id").cumcount()
-
     # Pre-compute outcome lookups
     referral_threads = set(referrals_df["thread_id"]) if referrals_df is not None and not referrals_df.empty else set()
     referral_channel_map = _build_referral_channel_map(referrals_df)
     failure_threads = set(failures_df["thread_id"]) if failures_df is not None and not failures_df.empty else set()
+
+    # Filter to failures only if requested
+    if failures_only and failure_threads:
+        filtered = filtered[filtered["thread_id"].isin(failure_threads)]
+        if filtered.empty:
+            return {"data": [], "total": 0, "page": page, "limit": limit}
+
+    # Compute msg positions
+    hdf_sorted = hdf.sort_index()
+    hdf_sorted["msg_pos"] = hdf_sorted.groupby("thread_id").cumcount()
     failure_criteria_map = (
         failures_df.set_index("thread_id")["criteria"].to_dict()
         if failures_df is not None and not failures_df.empty and "criteria" in failures_df.columns
+        else {}
+    )
+    failure_last_ai_map = (
+        failures_df.set_index("thread_id")["last_ai_message"].to_dict()
+        if failures_df is not None and not failures_df.empty and "last_ai_message" in failures_df.columns
+        else {}
+    )
+    failure_last_user_map = (
+        failures_df.set_index("thread_id")["last_user_message"].to_dict()
+        if failures_df is not None and not failures_df.empty and "last_user_message" in failures_df.columns
         else {}
     )
     survey_useful, survey_not_useful = _compute_survey_sets(df)
@@ -533,6 +558,8 @@ def get_category_threads(df: pd.DataFrame,
             ),
             "bot_failed": tid in failure_threads,
             "failure_criteria": failure_criteria_map.get(tid, ""),
+            "last_ai_message": str(failure_last_ai_map.get(tid, ""))[:250] if tid in failure_threads else "",
+            "last_user_message": str(failure_last_user_map.get(tid, ""))[:250] if tid in failure_threads else "",
         })
 
     # Sort by date descending

@@ -69,11 +69,18 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
         setIntencion(''); // Reset subcategory when macro changes
     }, [macroCategoria, macroToSub]);
 
-    // Update threadId if prop changes
+    // Update threadId if prop changes — reset ALL filters to show full thread
     useEffect(() => {
         if (initialThreadId) {
             setThreadId(initialThreadId);
-            setSenderType(''); 
+            setSenderType('');
+            setSentiment('');
+            setProduct('');
+            setMacroCategoria('');
+            setIntencion('');
+            setSurveyResult('');
+            setSearch('');
+            setSortBy('');
             setPage(1);
         }
     }, [initialThreadId]);

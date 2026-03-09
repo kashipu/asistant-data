@@ -307,7 +307,17 @@ def ingest_data():
         thread_sentiment = ai_sent_rows.groupby('thread_id')['sentiment'].agg(lambda x: x.mode()[0])
         human_mask_sent = df['type'] == 'human'
         # Human rows have no sentiment from CSV — propagate from AI of same thread
-        df.loc[human_mask_sent, 'sentiment'] = df.loc[human_mask_sent, 'thread_id'].map(thread_sentiment)
+        # But exclude survey responses — their sentiment comes from content, not thread mood
+        is_survey = df['text'].str.contains(r'^\[survey\]', case=False, na=False)
+        non_survey_human = human_mask_sent & ~is_survey
+        df.loc[non_survey_human, 'sentiment'] = df.loc[non_survey_human, 'thread_id'].map(thread_sentiment)
+        # For survey messages, assign sentiment based on survey content
+        survey_mask = human_mask_sent & is_survey
+        positive_survey = survey_mask & df['text'].str.contains(r'útil|util|positiv|bien|excelente|bueno|buena|gracias|satisf', case=False, na=False)
+        negative_survey = survey_mask & df['text'].str.contains(r'no me|no fue|negativ|mal|insatisf|pésim|pesim|inútil|inutil', case=False, na=False)
+        df.loc[positive_survey, 'sentiment'] = 'positivo'
+        df.loc[negative_survey, 'sentiment'] = 'negativo'
+        df.loc[survey_mask & ~positive_survey & ~negative_survey, 'sentiment'] = 'neutral'
         propagated = df.loc[human_mask_sent, 'sentiment'].notna().sum()
         print(f"  Propagated sentiment to {propagated} human messages")
 

@@ -49,7 +49,7 @@ export const api = {
   getProductsDetailed: (params?: { start_date?: string; end_date?: string }) =>
     axios.get(`${API_URL}/reports/products-detailed`, { params }).then(r => r.data),
   getCategoryThreads: (params: {
-    macro: string;
+    macro?: string;
     subcategory?: string;
     product?: string;
     cross_category?: string;
@@ -58,6 +58,8 @@ export const api = {
     start_date?: string;
     end_date?: string;
     exclude_greetings?: boolean;
+    product_macro?: string;
+    failures_only?: boolean;
   }) => axios.get(`${API_URL}/reports/category-threads`, { params }).then(r => r.data),
   getFailuresDetailed: (params?: { start_date?: string; end_date?: string }) =>
     axios.get(`${API_URL}/reports/failures-detailed`, { params }).then(r => r.data),

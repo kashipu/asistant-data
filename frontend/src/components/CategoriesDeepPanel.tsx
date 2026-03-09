@@ -105,6 +105,8 @@ interface ThreadItem {
   survey_result: string;
   bot_failed: boolean;
   failure_criteria: string;
+  last_ai_message: string;
+  last_user_message: string;
 }
 
 export function N(n: number): string {
@@ -261,6 +263,8 @@ export function ThreadListPanel({
   onNavigateToThread,
   startDate,
   endDate,
+  productMacro,
+  failuresOnly,
 }: {
   macro: string;
   subcategory?: string;
@@ -269,6 +273,8 @@ export function ThreadListPanel({
   onNavigateToThread?: (threadId: string) => void;
   startDate?: string;
   endDate?: string;
+  productMacro?: string;
+  failuresOnly?: boolean;
 }) {
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -287,11 +293,13 @@ export function ThreadListPanel({
       limit,
       start_date: startDate,
       end_date: endDate,
+      product_macro: productMacro,
+      failures_only: failuresOnly,
     })
       .then(r => { setThreads(r.data); setTotal(r.total); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [macro, subcategory, product, crossCategory, page, startDate, endDate]);
+  }, [macro, subcategory, product, crossCategory, page, startDate, endDate, productMacro, failuresOnly]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -345,7 +353,7 @@ export function ThreadListPanel({
             </thead>
             <tbody>
               {threads.map(t => (
-                <tr key={t.thread_id} className="border-b border-gray-50 hover:bg-white/60">
+                <tr key={t.thread_id} className="border-b border-gray-50 hover:bg-white/60 align-top">
                   <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">{t.fecha}</td>
                   <td className="py-2 pr-2">
                     <button
@@ -358,7 +366,19 @@ export function ThreadListPanel({
                     </button>
                     <span className="text-[10px] text-gray-400">{t.message_count} msgs</span>
                   </td>
-                  <td className="py-2 pr-2 text-gray-700 max-w-xs truncate">{t.first_human_message}</td>
+                  <td className="py-2 pr-2 text-gray-700 max-w-xs">
+                    <div className="truncate">{t.first_human_message}</div>
+                    {t.bot_failed && t.last_user_message && (
+                      <div className="mt-1 text-[10px] text-rose-600 bg-rose-50 rounded px-1.5 py-0.5 truncate" title={t.last_user_message}>
+                        <span className="font-semibold">Último msg:</span> {t.last_user_message}
+                      </div>
+                    )}
+                    {t.bot_failed && t.last_ai_message && (
+                      <div className="mt-0.5 text-[10px] text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 truncate" title={t.last_ai_message}>
+                        <span className="font-semibold">Bot respondió:</span> {t.last_ai_message}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-2 text-gray-500">{t.product || '-'}</td>
                   <td className="py-2 pr-2 text-center">
                     <Badge variant={t.intent_position === 'first_intent' ? 'primary' : 'warning'} className="text-[10px]">
