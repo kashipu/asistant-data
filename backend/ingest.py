@@ -258,6 +258,8 @@ def ingest_data():
     if 'fecha' in df.columns:
         # Parse flexibly — CSV may have full timestamps like "2026-02-01 21:00:46.674505 UTC"
         df['fecha'] = pd.to_datetime(df['fecha'], utc=True, errors='coerce')
+        # Preserve full timestamp as ISO string for precise ordering
+        df['timestamp'] = df['fecha'].dt.strftime('%Y-%m-%d %H:%M:%S')
         # Extract hour BEFORE converting to date string (if hora column is missing or empty)
         if 'hora' in df.columns:
             missing_hora = df['hora'].isna() | (df['hora'] == 0)
@@ -600,6 +602,7 @@ def ingest_data():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_requires_review ON messages (requires_review)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_is_servilinea ON messages (is_servilinea)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_product_yaml ON messages (product_yaml)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON messages (timestamp)")
     conn.commit()
     conn.close()
 

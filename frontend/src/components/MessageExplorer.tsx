@@ -20,6 +20,7 @@ interface MessageItem {
     macro_yaml?: string;
     servilinea_referral?: boolean;
     hora?: string | number;
+    timestamp?: string;
     thread_length?: number;
     type?: string;
     text?: string;
@@ -208,6 +209,8 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                         onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
                     >
                         <option value="">Ordenar por...</option>
+                        <option value="date_desc">Más recientes primero</option>
+                        <option value="date_asc">Más antiguas primero</option>
                         <option value="length_desc">Más largas primero</option>
                         <option value="length_asc">Más cortas primero</option>
                     </select>
@@ -259,7 +262,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                             messages.map((msg, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                                        {msg.fecha} {msg.hora}:00
+                                        {msg.timestamp || `${msg.fecha} ${msg.hora}:00`}
                                         {(msg.thread_length ?? 0) > 0 && (
                                             <div className="text-xs text-gray-400 mt-1">
                                                 Hilo de {msg.thread_length} msjs

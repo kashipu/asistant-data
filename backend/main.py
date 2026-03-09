@@ -253,12 +253,16 @@ def get_messages_endpoint(
 
     # Apply Sorting
     if sort_by in ['length_asc', 'length_desc']:
-        # Map lengths using Engine cache (fast)
-        # filtered_df['thread_length'] = filtered_df['thread_id'].map(thread_lengths) # OLD
         filtered_df['thread_length'] = filtered_df['thread_id'].map(lambda x: engine.get_thread_length(x))
-        
         ascending = sort_by == 'length_asc'
         filtered_df = filtered_df.sort_values(by=['thread_length', 'rowid'], ascending=[ascending, True])
+    elif sort_by in ['date_asc', 'date_desc']:
+        ts_col = 'timestamp' if 'timestamp' in filtered_df.columns else 'fecha'
+        ascending = sort_by == 'date_asc'
+        filtered_df = filtered_df.sort_values(by=[ts_col], ascending=ascending)
+    elif thread_id and 'timestamp' in filtered_df.columns:
+        # When viewing a single thread, always sort chronologically
+        filtered_df = filtered_df.sort_values(by=['timestamp'], ascending=True)
 
     start = (page - 1) * limit
     end = start + limit
