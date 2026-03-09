@@ -258,14 +258,13 @@ def ingest_data():
     if 'fecha' in df.columns:
         # Parse flexibly — CSV may have full timestamps like "2026-02-01 21:00:46.674505 UTC"
         df['fecha'] = pd.to_datetime(df['fecha'], utc=True, errors='coerce')
-        # Preserve full timestamp as ISO string for precise ordering
+        # Convert UTC → Colombia (UTC-5) for all date/time fields
+        df['fecha'] = df['fecha'].dt.tz_convert('America/Bogota')
+        # Preserve full timestamp as ISO string for precise ordering (local time)
         df['timestamp'] = df['fecha'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        # Extract hour BEFORE converting to date string (if hora column is missing or empty)
-        if 'hora' in df.columns:
-            missing_hora = df['hora'].isna() | (df['hora'] == 0)
-            if missing_hora.any():
-                df.loc[missing_hora, 'hora'] = df.loc[missing_hora, 'fecha'].dt.hour
-        # Store as string YYYY-MM-DD for consistency in SQLite
+        # Extract hour in local time
+        df['hora'] = df['fecha'].dt.hour
+        # Store date as string YYYY-MM-DD (local date) for consistency in SQLite
         df['fecha'] = df['fecha'].dt.strftime('%Y-%m-%d')
 
     # Ensure numeric columns

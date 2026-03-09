@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import {
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar
 } from 'recharts';
-import { Loader2, Activity } from 'lucide-react';
+import { Loader2, Activity, Clock } from 'lucide-react';
 
 interface ChartsProps {
   startDate?: string;
@@ -100,6 +100,11 @@ export const Charts = ({ startDate, endDate }: ChartsProps) => {
     .map(([date, count]) => ({ date, count }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const hourlyData = Array.from({ length: 24 }, (_, h) => ({
+    hour: `${h.toString().padStart(2, '0')}:00`,
+    count: temporalData.hourly_volume[h] || temporalData.hourly_volume[String(h)] || 0,
+  }));
+
   const metrics = data.metrics || [];
 
   return (
@@ -162,34 +167,69 @@ export const Charts = ({ startDate, endDate }: ChartsProps) => {
         </div>
       </div>
 
-      {/* TENDENCIA CHART */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h3 className="text-lg font-black text-gray-900 leading-tight">Tendencia de Mensajes</h3>
-            <p className="text-xs text-gray-500 font-medium">Volumen diario consolidado en el tiempo.</p>
+      {/* TENDENCIA + HORARIO — side by side on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* TENDENCIA CHART */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-black text-gray-900 leading-tight">Tendencia Diaria</h3>
+              <p className="text-xs text-gray-500 font-medium">Volumen de mensajes por día.</p>
+            </div>
+            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-xl text-blue-700">
+              <Activity size={18} />
+            </div>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-xl text-blue-700">
-            <Activity size={18} />
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyData}>
+                <defs>
+                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold'}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11, fontWeight: 'bold'}} />
+                <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" dot={{r: 3, fill: '#3B82F6', strokeWidth: 2, stroke: '#FFF'}} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dailyData}>
-              <defs>
-                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11, fontWeight: 'bold'}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11, fontWeight: 'bold'}} />
-              <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
-              <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={4} fillOpacity={1} fill="url(#colorCount)" dot={{r: 4, fill: '#3B82F6', strokeWidth: 2, stroke: '#FFF'}} />
-            </AreaChart>
-          </ResponsiveContainer>
+
+        {/* VOLUMEN POR HORA */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-black text-gray-900 leading-tight">Volumen por Hora</h3>
+              <p className="text-xs text-gray-500 font-medium">Distribución horaria de mensajes (hora Colombia).</p>
+            </div>
+            <div className="flex items-center gap-2 p-2 bg-violet-50 rounded-xl text-violet-700">
+              <Clock size={18} />
+            </div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyData}>
+                <defs>
+                  <linearGradient id="colorHour" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.3}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold'}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11, fontWeight: 'bold'}} />
+                <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                <Bar dataKey="count" fill="url(#colorHour)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
+
       </div>
 
     </div>
