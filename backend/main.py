@@ -205,7 +205,6 @@ def get_messages_endpoint(
 
     if thread_id:
         filtered_df = filtered_df[filtered_df['thread_id'] == thread_id]
-        filtered_df = filtered_df.sort_values(by=['rowid'])
     
     if macro_categoria:
         if 'macro_yaml' in filtered_df.columns:
@@ -260,9 +259,13 @@ def get_messages_endpoint(
         ts_col = 'timestamp' if 'timestamp' in filtered_df.columns else 'fecha'
         ascending = sort_by == 'date_asc'
         filtered_df = filtered_df.sort_values(by=[ts_col], ascending=ascending)
-    elif thread_id and 'timestamp' in filtered_df.columns:
+    elif thread_id:
         # When viewing a single thread, always sort chronologically
-        filtered_df = filtered_df.sort_values(by=['timestamp'], ascending=True)
+        if 'timestamp' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values(by=['timestamp'], ascending=True)
+        else:
+            # Fallback: sort by fecha + hora when timestamp column doesn't exist yet
+            filtered_df = filtered_df.sort_values(by=['fecha', 'hora'], ascending=True)
 
     start = (page - 1) * limit
     end = start + limit
