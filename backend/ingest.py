@@ -513,6 +513,44 @@ def ingest_data():
         rejected_count = int(needs_fallback_mask.sum() - eligible_mask.sum())
         print(f"  Rejected {rejected_count} short/generic msgs from AI propagation.")
 
+    # 3.2b. INTRA-THREAD CATEGORY PROPAGATION
+    #   If a human message in a thread is still uncategorized (requires_review=1),
+    #   but OTHER human messages in the same thread have a dominant category,
+    #   inherit that category. This catches typos/garbled text like "Noepodido"
+    #   when the rest of the thread clearly discusses "Consulta de Pagos".
+    #   Only propagate if the thread has a clear dominant category (>= 50% of
+    #   categorized human msgs agree).
+    still_needs_review = human_mask & (df['requires_review'] == 1)
+    still_needs_count = int(still_needs_review.sum())
+    if still_needs_count > 0:
+        print(f"  Intra-thread propagation: {still_needs_count} msgs still need review...")
+        categorized_humans = df[human_mask & (df['requires_review'] == 0) & df['categoria_yaml'].notna()]
+        if not categorized_humans.empty:
+            # Find dominant category per thread (mode)
+            thread_cat_mode = categorized_humans.groupby('thread_id').agg(
+                cat_mode=('categoria_yaml', lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else None),
+                macro_mode=('macro_yaml', lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else None),
+                cat_count=('categoria_yaml', 'size'),
+                cat_agree=('categoria_yaml', lambda x: (x == x.mode().iloc[0]).sum() if len(x.mode()) > 0 else 0),
+            )
+            # Only propagate if >= 50% of categorized msgs agree on the dominant category
+            thread_cat_mode['pct_agree'] = thread_cat_mode['cat_agree'] / thread_cat_mode['cat_count']
+            confident = thread_cat_mode[thread_cat_mode['pct_agree'] >= 0.5]
+
+            propagated = 0
+            for idx in df[still_needs_review].index:
+                tid = df.at[idx, 'thread_id']
+                if tid in confident.index:
+                    row = confident.loc[tid]
+                    cat = row['cat_mode']
+                    macro = row['macro_mode']
+                    if cat and cat not in ('Saludos', 'Sin Sentido', 'Retroalimentación'):
+                        df.at[idx, 'categoria_yaml'] = cat
+                        df.at[idx, 'macro_yaml'] = macro
+                        df.at[idx, 'requires_review'] = 0
+                        propagated += 1
+            print(f"  Intra-thread propagation: rescued {propagated} messages.")
+
     # 3.3. Preserve ONLY truly manual HITL corrections (from feedback panel)
     df['hitl_reviewed'] = 0
     if manual_corrections and 'id' in df.columns:
