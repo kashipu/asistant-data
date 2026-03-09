@@ -47,10 +47,41 @@ def get_categorical_analysis(df: pd.DataFrame):
     sentiment_x_intent = cross_df.groupby([cat_col, 'sentiment']).size().unstack(fill_value=0)
     sentiment_x_intent_data = sentiment_x_intent.to_dict(orient='index')
 
+    # Trend Analysis: Split data in two halves by rowid (or date if available)
+    winners = {}
+    losers = []
+    
+    if len(human_df) > 10:
+        # Simple split by position (assuming chronological order in DB)
+        mid = len(human_df) // 2
+        first_half = human_df.iloc[:mid]
+        second_half = human_df.iloc[mid:]
+        
+        counts1 = first_half[cat_col].value_counts()
+        counts2 = second_half[cat_col].value_counts()
+        
+        all_cats = set(counts1.index) | set(counts2.index)
+        trends = []
+        for cat in all_cats:
+            v1 = counts1.get(cat, 0)
+            v2 = counts2.get(cat, 0)
+            diff = v2 - v1
+            pct = (diff / v1 * 100) if v1 > 0 else (100 if v2 > 0 else 0)
+            trends.append({"name": cat, "diff": int(diff), "pct": round(float(pct), 1), "v1": int(v1), "v2": int(v2)})
+            
+        # Sort by absolute growth and percentage
+        trends.sort(key=lambda x: x['diff'], reverse=True)
+        winners = [t for t in trends if t['diff'] > 0][:5]
+        losers = sorted([t for t in trends if t['diff'] < 0], key=lambda x: x['diff'])[:5]
+
     return {
         "top_intents": top_intents,
         "top_macros": top_macros,
         "top_products": top_products,
         "sentiment_distribution": sentiment_dist,
         "sentiment_by_intent": sentiment_x_intent_data,
+        "trends": {
+            "winners": winners,
+            "losers": losers
+        }
     }

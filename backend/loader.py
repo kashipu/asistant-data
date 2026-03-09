@@ -16,6 +16,7 @@ def load_data():
             print("Database not found. Running ingestion...")
             from .ingest import ingest_data
             from .engine import DataEngine
+            import time
             
             engine = DataEngine.get_instance()
             engine.update_etl_state({
@@ -26,9 +27,11 @@ def load_data():
             try:
                 ingest_data()
                 engine.update_etl_state({"last_status": "success"})
-            except Exception:
+            except Exception as e:
+                print(f"Error during auto-ingestion: {e}")
                 engine.update_etl_state({"last_status": "error"})
-                raise
+                # We don't raise here to allow the engine to start even with empty data if needed,
+                # or we can raise if it's critical.
             finally:
                 engine.update_etl_state({
                     "is_running": False,

@@ -94,27 +94,42 @@ def detect_failures(df: pd.DataFrame):
     # For now, let's try the simple lambda, if it's slow we'll optimize.
     sentiments = grouped['sentiment'].agg(get_mode).rename('sentiment')
 
+    # Last AI Message — what the bot said (for understanding WHY it failed)
+    ai_in_failed = relevant_df[relevant_df['type'] == 'ai']
+    last_ai_msgs = ai_in_failed.groupby('thread_id')['text'].last().rename('last_ai_message')
+
+    # Was redirected (is_servilinea flag on any message in thread)
+    if 'is_servilinea' in relevant_df.columns:
+        was_redir = grouped['is_servilinea'].max().rename('was_redirected')
+    else:
+        was_redir = pd.Series(0, index=grouped.groups.keys(), name='was_redirected')
+
     # 3. Construct Result DataFrame
-    result = pd.concat([first_vals, msg_counts, last_user_msgs, sentiments], axis=1)
-    
-    # 4. Add Criteria (Vectorized-ish)
-    # We have the sets.
+    result = pd.concat([first_vals, msg_counts, last_user_msgs, last_ai_msgs, sentiments, was_redir], axis=1)
+
+    # 4. Add Criteria
+    kw_set = set(failed_threads_keywords)
+    rep_set = set(failed_threads_repetition)
+    sent_set = set(failed_threads_sentiment)
+
     def get_criteria(tid):
         c = []
-        if tid in failed_threads_keywords: c.append("Respuesta de incapacidad del bot")
-        if tid in failed_threads_repetition: c.append("Usuario repite pregunta")
-        if tid in failed_threads_sentiment: c.append("Sentimiento negativo predominante")
+        if tid in kw_set: c.append("Respuesta de incapacidad del bot")
+        if tid in rep_set: c.append("Usuario repite pregunta")
+        if tid in sent_set: c.append("Sentimiento negativo predominante")
         return ", ".join(c)
 
     result['criteria'] = result.index.map(get_criteria)
-    
+
     # Reset index to have thread_id as column
     result = result.reset_index()
-    
+
     # Fill NAs
     result['last_user_message'] = result['last_user_message'].fillna("N/A")
+    result['last_ai_message'] = result['last_ai_message'].fillna("")
     result['sentiment'] = result['sentiment'].fillna("neutral")
-    
+    result['was_redirected'] = result['was_redirected'].fillna(0).astype(int)
+
     return result
 
 # Simple cache system

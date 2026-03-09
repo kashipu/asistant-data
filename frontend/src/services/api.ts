@@ -4,13 +4,24 @@ import axios from 'axios';
 const API_URL = 'http://127.0.0.1:8000/api';
 
 export const api = {
-    getKpis: () => axios.get(`${API_URL}/kpis`).then(res => res.data),
+    getKPIs: (): Promise<{
+    total_conversations: number;
+    total_messages: number;
+    avg_messages_per_thread: number;
+    avg_human_messages_per_thread: number;
+    abandonment_rate: number;
+  }> => axios.get(`${API_URL}/kpis`).then(res => res.data),
     getFailures: (params: { page: number, limit: number, start_date?: string, end_date?: string }) => axios.get(`${API_URL}/failures`, { params }).then(res => res.data),
     getReferrals: (params: { page: number, limit: number, start_date?: string, end_date?: string }) => axios.get(`${API_URL}/referrals`, { params }).then(res => res.data),
-    getMessages: (params: { page: number, limit: number, search?: string, intencion?: string, macro_categoria?: string, sentiment?: string, product?: string, sender_type?: string, thread_id?: string, start_date?: string, end_date?: string, exclude_empty?: boolean, sort_by?: string }) => axios.get(`${API_URL}/messages`, { params }).then(res => res.data),
+    getMessages: (params: { page: number, limit: number, search?: string, intencion?: string, macro_categoria?: string, sentiment?: string, product?: string, sender_type?: string, thread_id?: string, start_date?: string, end_date?: string, exclude_empty?: boolean, sort_by?: string, survey_result?: string }) => axios.get(`${API_URL}/messages`, { params }).then(res => res.data),
     getOptions: () => axios.get(`${API_URL}/options`).then(res => res.data),
-    getCategoricalAnalysis: () => axios.get(`${API_URL}/analysis/categorical`).then(res => res.data),
-    getTemporalAnalysis: () => axios.get(`${API_URL}/analysis/temporal`).then(res => res.data),
+    getCategoricalAnalysis: (start_date?: string, end_date?: string) => axios.get(`${API_URL}/analysis/categorical`, { params: { start_date, end_date } }).then(res => res.data),
+    getTemporalAnalysis: (params?: { start_date?: string; end_date?: string }): Promise<{
+    daily_volume: Record<string, number>;
+    hourly_volume: Record<string, number>;
+    day_of_week_volume: Record<string, number>;
+    heatmap: Array<{ day: string; hour: number; count: number }>;
+  }> => axios.get(`${API_URL}/analysis/temporal`, { params }).then(res => res.data),
     getWordCloud: (intencion?: string) => axios.get(`${API_URL}/analysis/wordcloud`, { params: { intencion } }).then(res => res.data),
     getConversationAnalysis: (threadId?: string) => axios.get(`${API_URL}/analysis/conversations`, { params: { thread_id: threadId } }).then(res => res.data),
     getSummary: (start_date?: string, end_date?: string) => axios.get(`${API_URL}/summary`, { params: { start_date, end_date } }).then(res => res.data),
@@ -26,4 +37,39 @@ export const api = {
   getFaqs: (top_n = 5) => axios.get(`${API_URL}/faqs`, { params: { top_n } }).then(res => res.data),
   getQualitativeInsights: () => axios.get(`${API_URL}/insights/qualitative`).then(res => res.data),
   getCategoryInsights: (categoria: string) => axios.get(`${API_URL}/insights/category`, { params: { categoria } }).then(res => res.data),
+  getReportVolumes: (params?: { start_date?: string; end_date?: string }) => axios.get(`${API_URL}/reports/volumes`, { params }).then(res => res.data),
+  getReportSurveysLogic: (params?: { start_date?: string; end_date?: string }) => axios.get(`${API_URL}/reports/surveys/logic`, { params }).then(res => res.data),
+  getGaps: (params?: { start_date?: string; end_date?: string }) => axios.get(`${API_URL}/analysis/gaps`, { params }).then(res => res.data),
+  getFunnel: (params?: { start_date?: string; end_date?: string }) => axios.get(`${API_URL}/dashboard/funnel`, { params }).then(res => res.data),
+  getDataPeriod: () => axios.get(`${API_URL}/info/data-period`).then(res => res.data),
+  getKpisDetailed: (params?: { start_date?: string; end_date?: string }) =>
+    axios.get(`${API_URL}/reports/kpis-detailed`, { params }).then(r => r.data),
+  getCategoriesDetailed: (params?: { start_date?: string; end_date?: string }) =>
+    axios.get(`${API_URL}/reports/categories-detailed`, { params }).then(r => r.data),
+  getProductsDetailed: (params?: { start_date?: string; end_date?: string }) =>
+    axios.get(`${API_URL}/reports/products-detailed`, { params }).then(r => r.data),
+  getCategoryThreads: (params: {
+    macro: string;
+    subcategory?: string;
+    product?: string;
+    cross_category?: string;
+    page?: number;
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+    exclude_greetings?: boolean;
+  }) => axios.get(`${API_URL}/reports/category-threads`, { params }).then(r => r.data),
+  getFailuresDetailed: (params?: { start_date?: string; end_date?: string }) =>
+    axios.get(`${API_URL}/reports/failures-detailed`, { params }).then(r => r.data),
+  downloadMarkdownReport: async () => {
+    const response = await axios.get(`${API_URL}/reports/export/markdown`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'text/markdown' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `informe_ejecutivo_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };

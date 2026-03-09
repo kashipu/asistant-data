@@ -22,7 +22,9 @@ interface QualitativeData {
   referrals: {
     total: number;
     pct: number;
+    channel?: Record<string, number>;
   };
+  topics?: Record<string, number>;
 }
 
 interface CategoryData {
@@ -366,13 +368,28 @@ export const QualitativeInsights: React.FC = () => {
                     <p className="text-xs text-gray-500 mt-1">
                         Encuestados: {surveyData ? Math.round((surveyData.stats.total / generalData.conversations.total) * 100) : 0}% del total ({surveyData?.stats.total || 0} convos)
                     </p>
-                    <p className="text-xs text-gray-400 mt-1 flex justify-between">
-                        <span>Útil: {surveyData?.stats.useful || 0}</span>
-                        <span>No Útil: {surveyData?.stats.not_useful || 0}</span>
-                    </p>
                 </div>
             </div>
 
+            {/* Card 6: Temas Predominantes */}
+            {generalData.topics && (
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
+                            <AlertTriangle className="w-5 h-5"/>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-600">Composición de Temas</span>
+                    </div>
+                    <div className="space-y-1">
+                        {Object.entries(generalData.topics).map(([topic, pct]) => (
+                            <div key={topic} className="flex justify-between items-center">
+                                <span className="text-[10px] text-gray-500 uppercase font-bold">{topic}</span>
+                                <span className="text-xs font-bold text-gray-800">{pct}%</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
 
         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">

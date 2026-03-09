@@ -23,6 +23,7 @@ interface MessageItem {
     thread_length?: number;
     type?: string;
     text?: string;
+    is_servilinea?: boolean;
     [key: string]: unknown;
 }
 
@@ -45,6 +46,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
     const [senderType, setSenderType] = useState(''); // 'human' | 'ai'
     const [threadId, setThreadId] = useState(initialThreadId || '');
     const [sortBy, setSortBy] = useState(''); // '' | 'length_asc' | 'length_desc'
+    const [surveyResult, setSurveyResult] = useState(''); // '' | 'useful' | 'not_useful'
 
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
@@ -86,7 +88,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
     // Reset page when filters change (except page itself)
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, macroCategoria, intencion, sentiment, product, senderType, threadId, sortBy, startDate, endDate]);
+    }, [debouncedSearch, macroCategoria, intencion, sentiment, product, senderType, threadId, sortBy, startDate, endDate, surveyResult]);
 
     const fetchMessages = React.useCallback(async () => {
         setLoading(true);
@@ -102,6 +104,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                 sender_type: senderType || undefined,
                 thread_id: threadId || undefined,
                 sort_by: sortBy || undefined,
+                survey_result: surveyResult || undefined,
                 start_date: startDate,
                 end_date: endDate
             });
@@ -112,7 +115,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
         } finally {
             setLoading(false);
         }
-    }, [page, debouncedSearch, macroCategoria, intencion, sentiment, product, senderType, threadId, sortBy, startDate, endDate]);
+    }, [page, debouncedSearch, macroCategoria, intencion, sentiment, product, senderType, threadId, sortBy, startDate, endDate, surveyResult]);
 
     useEffect(() => {
         fetchMessages();
@@ -207,6 +210,16 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                         <option value="">Ordenar por...</option>
                         <option value="length_desc">Más largas primero</option>
                         <option value="length_asc">Más cortas primero</option>
+                    </select>
+
+                    <select 
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={surveyResult}
+                        onChange={(e) => { setSurveyResult(e.target.value); setPage(1); }}
+                    >
+                        <option value="">Resultado Encuesta</option>
+                        <option value="useful">Útil (Chatbot)</option>
+                        <option value="not_useful">No Útil (Chatbot)</option>
                     </select>
                 </div>
             </div>

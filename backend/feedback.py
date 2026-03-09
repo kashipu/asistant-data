@@ -135,10 +135,16 @@ def process_categorization(req: CategorizeRequest):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+    # Ensure hitl_reviewed column exists (may not exist in older DBs)
+    cols = [r[1] for r in cursor.execute("PRAGMA table_info(messages)").fetchall()]
+    if 'hitl_reviewed' not in cols:
+        cursor.execute("ALTER TABLE messages ADD COLUMN hitl_reviewed INTEGER DEFAULT 0")
+        conn.commit()
+
     macro = _get_macro_for_category(req.new_category)
 
     # Build SET clause dynamically
-    set_parts = ["requires_review = 0", "categoria_yaml = ?", "macro_yaml = ?", "intencion = ?"]
+    set_parts = ["requires_review = 0", "hitl_reviewed = 1", "categoria_yaml = ?", "macro_yaml = ?", "intencion = ?"]
     params = [req.new_category, macro, req.new_category]
 
     if req.new_sentiment:
@@ -167,6 +173,7 @@ def process_categorization(req: CategorizeRequest):
         engine = DataEngine.get_instance()
         updates = {
             'requires_review': 0,
+            'hitl_reviewed': 1,
             'categoria_yaml': req.new_category,
             'macro_yaml': macro,
             'intencion': req.new_category

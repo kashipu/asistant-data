@@ -15,7 +15,8 @@ interface ReferralItem {
     referral_response: string;
     intencion: string;
     product_type: string;
-    [key: string]: string;
+    channel?: string;
+    [key: string]: string | undefined;
 }
 
 export const Referrals = ({ onNavigateToThread, startDate, endDate }: ReferralsProps) => {
@@ -91,6 +92,9 @@ export const Referrals = ({ onNavigateToThread, startDate, endDate }: ReferralsP
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('referral_response')}>
                                 <div className="flex items-center gap-1">Respuesta IA <ArrowUpDown size={12} /></div>
                             </th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('channel')}>
+                                <div className="flex items-center gap-1">Canal <ArrowUpDown size={12} /></div>
+                            </th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Int./Prod.</th>
                             <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
@@ -119,10 +123,19 @@ export const Referrals = ({ onNavigateToThread, startDate, endDate }: ReferralsP
                                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={ref.referral_response}>
                                         {ref.referral_response}
                                     </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                            ref.channel === 'digital' ? 'bg-emerald-100 text-emerald-800' : 
+                                            ref.channel === 'serviline' ? 'bg-blue-100 text-blue-800' : 
+                                            'bg-gray-100 text-gray-800'
+                                        }`}>
+                                            {ref.channel || 'otro'}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4 text-sm text-gray-500">
                                         <div className="flex flex-col">
-                                            <span className="text-xs">I: {ref.intencion}</span>
-                                            <span className="text-xs">P: {ref.product_type}</span>
+                                            <span className="text-xs font-medium">{ref.intencion}</span>
+                                            <span className="text-xs text-gray-400">{ref.product_type}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm">

@@ -71,3 +71,18 @@ logs/
 # Backups & Temp Errors
 *_backup.yml
 *_errors.txt
+
+# Generated reports & analysis
+informe_*.md
+csv_analysis_results.txt
+
+# Test/debug scripts (not part of app)
+analyze_csv.py
+verify_*.py
+generate_report.py
+generate_deep_report.py
+backend/test_*.py
+backend/inspect_data.py
+
+# Agents
+.agents/

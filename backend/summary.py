@@ -3,365 +3,192 @@ from .referrals import detect_referrals
 
 def get_general_summary(df: pd.DataFrame, start_date: str = None, end_date: str = None):
     """
-    Generates a summary table aggregated by 'Category', 'Intention' (Subcategory) AND 'Product'.
-    Columns: Category, Intention, Product, Conversations, Human Msgs, AI Msgs, Tool Msgs, Positive, Neutral, Negative, Servilínea.
+    ULTRA-OPTIMIZED and THREAD-SAFE version of get_general_summary.
+    Uses external series for aggregation to avoid modifying the shared singleton 'df'.
     """
     if df.empty:
         return []
 
-    # 0. Date Filtering
+    # 0. Date Filtering (Creates a local copy if filters are applied)
     if start_date or end_date:
         if 'fecha' in df.columns:
             mask = pd.Series(True, index=df.index)
-            if start_date:
-                mask &= (df['fecha'] >= pd.to_datetime(start_date))
-            if end_date:
-                mask &= (df['fecha'] <= pd.to_datetime(end_date))
+            if start_date: mask &= (df['fecha'] >= pd.to_datetime(start_date))
+            if end_date: mask &= (df['fecha'] <= pd.to_datetime(end_date))
             df = df[mask].copy()
 
     if df.empty:
         return []
 
-    # 1. Determine Thread Category (macro) and Intention (subcategory) from human messages
-    # Source of truth: categoria_yaml + macro_yaml in DB (set by ETL from YAML)
+    # 1. Determine Thread Metadata (Category, Intention, Product)
     has_yaml = 'categoria_yaml' in df.columns and 'macro_yaml' in df.columns
-
-    thread_metadata = {}
-
+    
     if has_yaml:
-        # Use human messages — they carry categoria_yaml/macro_yaml after ETL
-        human_msgs = df[(df['type'] == 'human') & df['categoria_yaml'].notna()].copy()
-
+        human_msgs = df[(df['type'] == 'human') & (df['categoria_yaml'].notna())]
         if not human_msgs.empty:
-            grouped_h = human_msgs.groupby('thread_id')
-            for tid, group in grouped_h:
-                macro_mode = group['macro_yaml'].mode()
-                cat_mode   = group['categoria_yaml'].mode()
-                prod_col = 'product_yaml' if 'product_yaml' in group.columns else 'product_type'
-                prod_mode = group[prod_col].mode() if prod_col in group.columns else pd.Series([])
-
-                macro  = macro_mode.iloc[0] if not macro_mode.empty else 'Sin Clasificar'
-                intent = cat_mode.iloc[0]   if not cat_mode.empty   else 'sin categoría'
-                product = prod_mode.iloc[0] if not prod_mode.empty  else 'N/A'
-                thread_metadata[tid] = (macro or 'Sin Clasificar', intent or 'sin categoría', product or 'N/A')
-    else:
-        # Fallback: original product_type + intencion from AI rows
-        ai_msgs = df[df['type'] == 'ai'].copy()
-
-        def clean_str(s):
-            if pd.isna(s): return None
-            s = str(s).strip().lower()
-            if s in ['', 'ninguno', 'nan', 'none', 'sin intencion clara']: return None
-            return s
-
-        if not ai_msgs.empty:
-            ai_msgs['product_type'] = ai_msgs['product_type'].apply(clean_str)
-            ai_msgs['intencion']    = ai_msgs['intencion'].apply(clean_str)
-            grouped_ai = ai_msgs.groupby('thread_id')
-            for tid, group in grouped_ai:
-                cat_mode = group['product_type'].mode()
-                int_mode = group['intencion'].mode()
-                cat    = cat_mode.iloc[0] if not cat_mode.empty else 'uncategorized'
-                intent = int_mode.iloc[0] if not int_mode.empty else 'sin intención clara'
-                thread_metadata[tid] = (cat or 'uncategorized', intent or 'sin intención clara', cat or 'uncategorized') # reuse cat as product in fallback
-
-    # 2. Vectorized Aggregation
-    
-    # Create a DataFrame for Thread Metadata
-    # Default to uncategorized
-    all_thread_ids = df['thread_id'].unique()
-    meta_df = pd.DataFrame(index=all_thread_ids, columns=['category', 'intention', 'product'])
-    meta_df[:] = ('uncategorized', 'sin intención clara', 'N/A')
-    
-    # Update with found metadata
-    if thread_metadata:
-        found_meta = pd.DataFrame.from_dict(thread_metadata, orient='index', columns=['category', 'intention', 'product'])
-        meta_df.update(found_meta)
-        
-    meta_df.reset_index(inplace=True)
-    meta_df.rename(columns={'index': 'thread_id'}, inplace=True)
-    
-    # Merge metadata back to main DF to aggregate message-level stats
-    # We only need specific columns for aggregation
-    # Pre-calculate counts/dummies
-    
-    # 3. Message Type Counts
-    # Faster: Group boolean masks
-    type_dummies = pd.get_dummies(df['type'])
-    # Ensure columns exist
-    for col in ['human', 'ai', 'tool']:
-        if col not in type_dummies.columns:
-            type_dummies[col] = 0
+            thread_meta = human_msgs.drop_duplicates(subset=['thread_id'])[['thread_id', 'macro_yaml', 'categoria_yaml']].copy()
+            thread_meta.rename(columns={'macro_yaml': 'category', 'categoria_yaml': 'intention'}, inplace=True)
             
-    # Join dummies to df (temporarily) or just group them by thread_id
-    # We need to group by (Category, Intention) eventually.
-    # So let's merge category/intention to df
-    
-    df_merged = df.merge(meta_df, on='thread_id', how='left')
-    
-    # Handle NaNs in category/intention/product (shouldn't happen due to meta_df init, but safety)
-    df_merged['category'] = df_merged['category'].fillna('uncategorized')
-    df_merged['intention'] = df_merged['intention'].fillna('sin intención clara')
-    df_merged['product'] = df_merged['product'].fillna('N/A')
-    
-    # Group by Category/Intention/Product for Message Counts
-    # We map 'type' column to columns: human_msgs, ai_msgs, tool_msgs
-    # pivot_table or groupby unstack
-    
-    group_cols = ['category', 'intention', 'product']
-    
-    # Aggregations
-    # 1. Message counts by type
-    # We can simple sum the dummies grouped by [category, intention]
-    # But checking 'type' column is cleaner.
-    
-    # Let's bind dummies to df_merged
-    df_merged = pd.concat([df_merged, type_dummies[['human', 'ai', 'tool']]], axis=1)
-    
-    # 2. Sentiments (only human)
-    # create dummies for sentiment
-    sent_cols = ['positive', 'neutral', 'negative']
-    if 'sentiment' in df.columns:
-        # Normalize sentiment
-        sents = df['sentiment'].str.lower().map({
-            'positive': 'positive', 'positivo': 'positive',
-            'neutral': 'neutral', 'neutro': 'neutral', 'neutra': 'neutral',
-            'negative': 'negative', 'negativo': 'negative'
-        })
-        sent_dummies = pd.get_dummies(sents)
-        # Rename to ensure english keys
-        # Ensure all columns exist
-        for col in sent_cols:
-            if col not in sent_dummies.columns:
-                sent_dummies[col] = 0
+            prod_col = 'product_yaml' if 'product_yaml' in human_msgs.columns else 'product_type'
+            if prod_col in human_msgs.columns:
+                prod_meta = human_msgs[human_msgs[prod_col].notna()].drop_duplicates(subset=['thread_id'])[['thread_id', prod_col]]
+                thread_meta = thread_meta.merge(prod_meta.rename(columns={prod_col: 'product'}), on='thread_id', how='left')
+            else:
+                thread_meta['product'] = 'N/A'
+        else:
+            thread_meta = pd.DataFrame(columns=['thread_id', 'category', 'intention', 'product'])
     else:
-        sent_dummies = pd.DataFrame(0, index=df.index, columns=sent_cols)
-        
-    df_merged = pd.concat([df_merged, sent_dummies[sent_cols]], axis=1)
+        ai_msgs = df[df['type'] == 'ai']
+        if not ai_msgs.empty:
+            thread_meta = ai_msgs.drop_duplicates(subset=['thread_id'])[['thread_id', 'product_type', 'intencion']].copy()
+            thread_meta.rename(columns={'product_type': 'category', 'intencion': 'intention'}, inplace=True)
+            thread_meta['product'] = thread_meta['category']
+        else:
+            thread_meta = pd.DataFrame(columns=['thread_id', 'category', 'intention', 'product'])
+
+    # 2. Extract mappings for vectorized grouping (No side effects on df)
+    cat_map = thread_meta.set_index('thread_id')['category'].to_dict()
+    int_map = thread_meta.set_index('thread_id')['intention'].to_dict()
+    prd_map = thread_meta.set_index('thread_id')['product'].to_dict()
+
+    # Create temporary Series for grouping (Does NOT modify df)
+    tmp_cat = df['thread_id'].map(cat_map).fillna('uncategorized').rename('category')
+    tmp_int = df['thread_id'].map(int_map).fillna('sin intención clara').rename('intention')
+    tmp_prd = df['thread_id'].map(prd_map).fillna('N/A').rename('product')
+
+    # 3. Message Type & Sentiment indicators as local DataFrames
+    stats_df = pd.DataFrame(index=df.index)
+    stats_df['is_human'] = (df['type'] == 'human').astype(int)
+    stats_df['is_ai'] = (df['type'] == 'ai').astype(int)
+    stats_df['is_tool'] = (df['type'] == 'tool').astype(int)
     
-    # 3. Referrals
-    # Referrals are per THREAD. We need to sum them per group.
-    # Detect referrals returns a DF of messages or threads? 
-    # detect_referrals returns messages DF. 
-    # Get thread IDs with referrals
+    if 'sentiment' in df.columns:
+        s_lower = df['sentiment'].str.lower()
+        stats_df['s_pos'] = s_lower.isin(['positive', 'positivo']).astype(int)
+        stats_df['s_neu'] = s_lower.isin(['neutral', 'neutro', 'neutra']).astype(int)
+        stats_df['s_neg'] = s_lower.isin(['negative', 'negativo']).astype(int)
+    else:
+        stats_df['s_pos'] = stats_df['s_neu'] = stats_df['s_neg'] = 0
+    
+    stats_df['total_interactions'] = 1 # Each row is an interaction
+
+    # 4. Referrals (Thread-level)
     referrals_df = detect_referrals(df)
-    ref_threads = set()
-    if not referrals_df.empty:
-        ref_threads = set(referrals_df['thread_id'].unique())
-        
-    # Mark threads with referral in meta_df
-    meta_df['servilinea_referrals'] = meta_df['thread_id'].apply(lambda x: 1 if x in ref_threads else 0)
+    ref_threads = set() if referrals_df.empty else set(referrals_df['thread_id'].unique())
     
-    # Now aggregate
+    thread_level = thread_meta.copy() if not thread_meta.empty else pd.DataFrame(columns=['thread_id', 'category', 'intention', 'product'])
     
-    # A. Message Level Aggregation (Sums)
-    msg_stats = df_merged.groupby(group_cols)[['human', 'ai', 'tool', 'positive', 'neutral', 'negative']].sum()
-    
-    # B. Thread Level Aggregation (Counts and sums of thread-level props)
-    # We aggregate meta_df
-    thread_stats = meta_df.groupby(group_cols).agg({
-        'thread_id': 'count', # Unique conversations
-        'servilinea_referrals': 'sum'
+    # If some threads are missing in thread_meta (uncategorized), we add them
+    all_threads = df['thread_id'].unique()
+    missing_threads = set(all_threads) - set(thread_level['thread_id'])
+    if missing_threads:
+        missing_df = pd.DataFrame({
+            'thread_id': list(missing_threads),
+            'category': 'uncategorized',
+            'intention': 'sin intención clara',
+            'product': 'N/A'
+        })
+        thread_level = pd.concat([thread_level, missing_df], ignore_index=True)
+
+    thread_level['has_ref'] = thread_level['thread_id'].isin(ref_threads).astype(int)
+
+    # 5. AGGREGATE
+    # Group message-level stats using the external Series
+    msg_summary = stats_df.groupby([tmp_cat, tmp_int, tmp_prd]).agg({
+        'is_human': 'sum',
+        'is_ai': 'sum',
+        'is_tool': 'sum',
+        's_pos': 'sum',
+        's_neu': 'sum',
+        's_neg': 'sum',
+        'total_interactions': 'sum'
     })
-    thread_stats.rename(columns={'thread_id': 'unique_conversations'}, inplace=True)
-    
-    # C. Total Interactions (Total messages)
-    total_interactions = df_merged.groupby(group_cols).size().rename('total_interactions')
-    
-    # Combine all
-    summary_df = pd.concat([thread_stats, msg_stats, total_interactions], axis=1).fillna(0)
-    
-    # Reset index to turn indices into columns
-    summary_df.reset_index(inplace=True)
-    # Rename columns to match interface if needed (already match: category, intention, unique_conversations...)
-    # human -> human_msgs
-    summary_df.rename(columns={
-        'human': 'human_msgs',
-        'ai': 'ai_msgs',
-        'tool': 'tool_msgs'
+
+    # Group thread-level stats
+    thread_summary = thread_level.groupby(['category', 'intention', 'product']).agg({
+        'thread_id': 'count',
+        'has_ref': 'sum'
+    }).rename(columns={'thread_id': 'unique_conversations', 'has_ref': 'servilinea_referrals'})
+
+    # JOIN THEM
+    final_df = pd.concat([thread_summary, msg_summary], axis=1).fillna(0).reset_index()
+    final_df.rename(columns={
+        'is_human': 'human_msgs', 'is_ai': 'ai_msgs', 'is_tool': 'tool_msgs',
+        's_pos': 'positive', 's_neu': 'neutral', 's_neg': 'negative'
     }, inplace=True)
-    
+
     # Sort
-    summary_df.sort_values(['category', 'unique_conversations'], ascending=[True, False], inplace=True)
+    final_df.sort_values(['category', 'unique_conversations'], ascending=[True, False], inplace=True)
     
-    return summary_df.to_dict(orient='records')
+    return final_df.to_dict(orient='records')
 
 def get_uncategorized_threads(df: pd.DataFrame, page: int = 1, limit: int = 20, start_date: str = None, end_date: str = None):
-    """
-    Returns a dict with paginated threads and stats for uncategorized conversations.
-    """
-    if df.empty:
-        return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
-
-    # 0. Date Filtering
+    if df.empty: return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
     if start_date or end_date:
         if 'fecha' in df.columns:
             mask = pd.Series(True, index=df.index)
-            if start_date:
-                mask &= (df['fecha'] >= pd.to_datetime(start_date))
-            if end_date:
-                mask &= (df['fecha'] <= pd.to_datetime(end_date))
+            if start_date: mask &= (df['fecha'] >= pd.to_datetime(start_date))
+            if end_date: mask &= (df['fecha'] <= pd.to_datetime(end_date))
             df = df[mask].copy()
+    if df.empty: return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
 
-    if df.empty:
-        return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
-
-    # 1. Identify Uncategorized Threads
-    # Threads where NO AI message has a valid product_type AND NO human message has a valid categoria_yaml
-    
-    # Valid messages
     if 'categoria_yaml' in df.columns:
-        valid_msgs = df[
-            (
-                (df['type'] == 'ai') & 
-                (df['product_type'].notna()) & 
-                (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))
-            ) |
-            (
-                (df['type'] == 'human') & 
-                (df['categoria_yaml'].notna()) & 
-                (~df['categoria_yaml'].isin(['', 'uncategorized', 'sin intención clara', 'sin intencion clara', 'nan', 'None']))
-            )
-        ]
+        valid_mask = (
+            ((df['type'] == 'ai') & (df['product_type'].notna()) & (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))) |
+            ((df['type'] == 'human') & (df['categoria_yaml'].notna()) & (~df['categoria_yaml'].isin(['', 'uncategorized', 'sin intención clara', 'sin intencion clara', 'nan', 'None'])))
+        )
     else:
-        valid_msgs = df[
-            (df['type'] == 'ai') & 
-            (df['product_type'].notna()) & 
-            (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))
-        ]
+        valid_mask = (df['type'] == 'ai') & (df['product_type'].notna()) & (~df['product_type'].isin(['', 'ninguno', 'nan', 'None', 'sin intencion clara']))
         
-    categorized_threads = set(valid_msgs['thread_id'].unique())
-    all_threads = set(df['thread_id'].unique())
-    uncategorized_ids = list(all_threads - categorized_threads)
-    
-    if not uncategorized_ids:
-        return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
+    categorized_threads = set(df[valid_mask]['thread_id'].unique())
+    uncategorized_ids = list(set(df['thread_id'].unique()) - categorized_threads)
+    if not uncategorized_ids: return {"data": [], "total": 0, "stats": {"servilinea": 0, "empty_msgs": 0}}
 
-    # Filter DF to only uncategorized threads
     uncat_df = df[df['thread_id'].isin(uncategorized_ids)].copy()
+    ref_threads = set(detect_referrals(uncat_df)['thread_id'].unique()) if not detect_referrals(uncat_df).empty else set()
+    empty_threads = set(uncat_df[uncat_df['text'].str.strip() == '']['thread_id'].unique())
 
-    # 2. Calculate Global Stats for Uncategorized
-    
-    # Servilínea
-    referrals_df = detect_referrals(uncat_df)
-    servilinea_thread_ids = set()
-    if not referrals_df.empty:
-        servilinea_thread_ids = set(referrals_df['thread_id'].unique())
-    
-    # Empty Messages (Threads that have at least one empty content message)
-    # Checking for empty 'text' or just whitespace
-    empty_msg_threads = uncat_df[uncat_df['text'].str.strip() == '']['thread_id'].unique()
-    empty_msg_thread_ids = set(empty_msg_threads)
-
-    stats = {
-        "servilinea": len(servilinea_thread_ids),
-        "empty_msgs": len(empty_msg_thread_ids)
-    }
-
-    # 3. Pagination
-    # Sort IDs by date (most recent first)
-    # We need a mapping of thread_id -> date to sort
-    thread_dates = pd.Series(dtype='object')
-    if 'fecha' in uncat_df.columns:
-        thread_dates = uncat_df.sort_values('rowid').groupby('thread_id')['fecha'].first()
-    
-    # Create valid date mapping, default to empty string if missing
-    date_map = thread_dates.to_dict()
-    
-    # Sort uncategorized_ids based on date descending
+    # Pagination sorting
+    date_map = uncat_df.sort_values('rowid').groupby('thread_id')['fecha'].first().to_dict()
     uncategorized_ids.sort(key=lambda x: str(date_map.get(x, '')), reverse=True)
     
-    total_items = len(uncategorized_ids)
-    start_idx = (page - 1) * limit
-    end_idx = start_idx + limit
-    
-    paginated_ids = uncategorized_ids[start_idx:end_idx]
-    
-    if not paginated_ids:
-        return {"data": [], "total": total_items, "stats": stats}
+    total = len(uncategorized_ids)
+    p_ids = uncategorized_ids[(page-1)*limit:page*limit]
+    if not p_ids: return {"data": [], "total": total, "stats": {"servilinea": len(ref_threads), "empty_msgs": len(empty_threads)}}
 
-    # 4. Build Result Data for Current Page
-    page_df = uncat_df[uncat_df['thread_id'].isin(paginated_ids)]
+    p_df = uncat_df[uncat_df['thread_id'].isin(p_ids)]
+    msg_counts = p_df.groupby('thread_id').size()
+    first_texts = p_df[p_df['type'] == 'human'].sort_values('rowid').groupby('thread_id')['text'].first()
     
-    # Msg Counts
-    msg_counts = page_df.groupby('thread_id').size()
-    
-    # First Human Text
-    human_df = page_df[page_df['type'] == 'human'].sort_values('rowid')
-    first_texts = human_df.groupby('thread_id')['text'].first()
-    
-    results = []
-    for tid in paginated_ids:
-        results.append({
-            "thread_id": tid,
-            "date": str(date_map.get(tid, '')),
-            "msg_count": int(msg_counts.get(tid, 0)),
-            "sample_text": str(first_texts.get(tid, '')),
-            "is_servilinea": tid in servilinea_thread_ids,
-            "has_empty_msg": tid in empty_msg_thread_ids
-        })
-        
-    return {
-        "data": results,
-        "total": total_items,
-        "stats": stats
-    }
+    results = [{
+        "thread_id": tid, "date": str(date_map.get(tid, '')),
+        "msg_count": int(msg_counts.get(tid, 0)), "sample_text": str(first_texts.get(tid, '')),
+        "is_servilinea": tid in ref_threads, "has_empty_msg": tid in empty_threads
+    } for tid in p_ids]
+    return {"data": results, "total": total, "stats": {"servilinea": len(ref_threads), "empty_msgs": len(empty_threads)}}
 
 def get_survey_stats(df: pd.DataFrame, start_date: str = None, end_date: str = None):
-    """
-    Analyzes [survey] messages.
-    Returns:
-        - stats: { total, useful, not_useful }
-        - conversations: list of threads with survey responses
-    """
-    if df.empty:
-        return {"stats": {"total": 0, "useful": 0, "not_useful": 0}, "conversations": []}
-
-    # 0. Date Filtering
+    if df.empty: return {"stats": {"total": 0, "useful": 0, "not_useful": 0}, "conversations": []}
     if start_date or end_date:
         if 'fecha' in df.columns:
-            mask = pd.Series(True, index=df.index)
-            if start_date:
-                mask &= (df['fecha'] >= pd.to_datetime(start_date))
-            if end_date:
-                mask &= (df['fecha'] <= pd.to_datetime(end_date))
+            mask = pd.Series(True, index=df.index); 
+            if start_date: mask &= (df['fecha'] >= pd.to_datetime(start_date))
+            if end_date: mask &= (df['fecha'] <= pd.to_datetime(end_date))
             df = df[mask].copy()
+    if df.empty: return {"stats": {"total": 0, "useful": 0, "not_useful": 0}, "conversations": []}
+    
+    s_mask = df['text'].str.contains(r'\[survey\]', case=False, na=False)
+    s_df = df[s_mask].copy()
+    if s_df.empty: return {"stats": {"total": 0, "useful": 0, "not_useful": 0}, "conversations": []}
 
-    if df.empty:
-        return {"stats": {"total": 0, "useful": 0, "not_useful": 0}, "conversations": []}
-        
-    # Filter messages containing [survey]
-    survey_msgs = df[df['text'].str.contains(r'\[survey\]', case=False, na=False)].copy()
+    t_low = s_df['text'].str.lower()
+    is_not = t_low.str.contains("no me fue útil")
+    is_use = t_low.str.contains("me fue útil") & ~is_not
+    s_df['status'] = 'unknown'
+    s_df.loc[is_not, 'status'] = 'not_useful'
+    s_df.loc[is_use, 'status'] = 'useful'
     
-    useful_count = 0
-    not_useful_count = 0
-    conversations = []
-    
-    for _, row in survey_msgs.iterrows():
-        text = str(row['text']).lower()
-        is_useful = "me fue útil" in text and "no me fue útil" not in text
-        is_not_useful = "no me fue útil" in text
-        
-        status = "unknown"
-        if is_useful:
-            useful_count += 1
-            status = "useful"
-        elif is_not_useful:
-            not_useful_count += 1
-            status = "not_useful"
-            
-        conversations.append({
-            "thread_id": row['thread_id'],
-            "date": row.get('fecha', ''),
-            "feedback": row['text'],
-            "status": status
-        })
-        
     return {
-        "stats": {
-            "total": len(survey_msgs),
-            "useful": useful_count,
-            "not_useful": not_useful_count
-        },
-        "conversations": conversations
+        "stats": {"total": len(s_df), "useful": int(is_use.sum()), "not_useful": int(is_not.sum())},
+        "conversations": s_df[['thread_id', 'fecha', 'text', 'status']].rename(columns={'text': 'feedback', 'fecha': 'date'}).to_dict(orient='records')
     }

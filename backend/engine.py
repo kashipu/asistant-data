@@ -99,6 +99,9 @@ class DataEngine:
             failures_df = pd.read_sql("SELECT * FROM failures", conn)
             if failures_df.empty and not df.empty:
                  raise Exception("Empty failures table")
+            # Ensure schema has new columns; recompute if missing
+            if 'last_ai_message' not in failures_df.columns:
+                raise Exception("Schema outdated — missing last_ai_message")
         except Exception:
             print("Failures not found in DB. Computing...")
             failures_df = detect_failures(df)
@@ -139,6 +142,21 @@ class DataEngine:
 
     def has_empty_messages(self, thread_id):
         return thread_id in self.empty_msg_threads
+
+    def get_data_period(self):
+        """Returns the min and max dates of the dataset."""
+        if self.df is None or self.df.empty or 'fecha' not in self.df.columns:
+            return {"start": None, "end": None}
+        
+        # Ensure 'fecha' is datetime for reliable min/max
+        dates = pd.to_datetime(self.df['fecha'], errors='coerce').dropna()
+        if dates.empty:
+            return {"start": None, "end": None}
+            
+        return {
+            "start": dates.min().strftime('%Y-%m-%d'),
+            "end": dates.max().strftime('%Y-%m-%d')
+        }
 
     def reload(self):
         print("Reloading Data Engine...")

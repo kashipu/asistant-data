@@ -3,17 +3,14 @@ import { useEffect, useState } from 'react';
 import { api } from './services/api';
 import { Charts } from './components/Charts';
 import { MessageExplorer } from './components/MessageExplorer';
-import { Referrals } from './components/Referrals';
-import { Failures } from './components/Failures';
-import { Insights } from './components/Insights';
-import { UncategorizedPanel } from './components/UncategorizedPanel';
-import { SummaryTable } from './components/SummaryTable';
-import { SurveyPanel } from './components/SurveyPanel';
-import { AdvisorPanel } from './components/AdvisorPanel';
 import { ReviewPanel } from './components/ReviewPanel';
 import { FaqsPanel } from './components/FaqsPanel';
-import { QualitativeInsights } from './components/QualitativeInsights';
-import { LayoutDashboard, MessageSquare, AlertOctagon, PhoneCall, Activity, BarChart3, HelpCircle, SearchCode, Bookmark, RefreshCw, Loader2, DatabaseZap, CheckCircle2, XCircle, Star } from 'lucide-react';
+import { GapsPanel } from './components/GapsPanel';
+import { KpisPanel } from './components/KpisPanel';
+import { CategoriesDeepPanel } from './components/CategoriesDeepPanel';
+import { ProductsDeepPanel } from './components/ProductsDeepPanel';
+import { FailuresDeepPanel } from './components/FailuresDeepPanel';
+import { LayoutDashboard, Activity, Ban, SearchCode, Bookmark, RefreshCw, Loader2, DatabaseZap, CheckCircle2, XCircle, TrendingUp, Layers, Package, BugPlay, MessageSquare, FileDown } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -24,18 +21,35 @@ function App() {
   const [isReprocessing, setIsReprocessing] = useState(false);
   const [etlElapsed, setEtlElapsed] = useState(0);
   const [etlFinished, setEtlFinished] = useState<'success' | 'error' | null>(null);
+  const [dataPeriod, setDataPeriod] = useState<{ start: string | null, end: string | null }>({ start: null, end: null });
+
+  // Fetch data period
+  const fetchDataPeriod = async () => {
+    try {
+      const period = await api.getDataPeriod();
+      setDataPeriod(period);
+    } catch (err) {
+      console.error("Failed to fetch data period:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDataPeriod();
+  }, []);
 
   // Check initial ETL status and setup polling only if active
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const status = await api.getEtlStatus();
-        
+
         // If it was running and stopped, trigger finish logic
         if (isReprocessing && !status.is_running) {
           const result = status.last_status === 'error' ? 'error' : 'success';
           setEtlFinished(result);
           setIsReprocessing(false);
+          // Reload data period after success
+          fetchDataPeriod();
           // Reload after 3s to let the user see the result
           setTimeout(() => window.location.reload(), 3000);
           return;
@@ -61,7 +75,7 @@ function App() {
     if (isReprocessing) {
         interval = window.setInterval(checkStatus, 3000);
     }
-    
+
     return () => {
         if (interval) clearInterval(interval);
     };
@@ -69,7 +83,7 @@ function App() {
 
   const handleReprocess = async () => {
     if (!window.confirm("¿Seguro que deseas volver a procesar y clasificar todos los datos? Esto tomará unos minutos y aplicará tus cambios del YAML y Etiquetas.")) return;
-    
+
     setIsReprocessing(true);
     setEtlElapsed(0);
     try {
@@ -78,7 +92,7 @@ function App() {
       console.error(error);
       alert("Ocurrió un error al intentar iniciar el reprocesamiento.");
       setIsReprocessing(false);
-    } 
+    }
   };
 
   const navigateToThread = (threadId: string) => {
@@ -91,28 +105,22 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Charts startDate={startDate} endDate={endDate} />;
-      case 'categories':
-        return <SummaryTable startDate={startDate} endDate={endDate} />;
-      case 'failures':
-        return <Failures onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
-      case 'referrals':
-        return <Referrals onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
-      case 'uncategorized':
-        return <UncategorizedPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
-      case 'advisors':
-        return <AdvisorPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
+      case 'gaps':
+        return <GapsPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
+      case 'kpis':
+        return <KpisPanel startDate={startDate} endDate={endDate} />;
+      case 'categories-deep':
+        return <CategoriesDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
+      case 'products-deep':
+        return <ProductsDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
+      case 'failures-deep':
+        return <FailuresDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
       case 'feedbacks':
         return <ReviewPanel onNavigateToThread={navigateToThread} />;
-      case 'surveys':
-        return <SurveyPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
-      case 'messages':
-        return <MessageExplorer initialThreadId={threadIdToNavigate || undefined} startDate={startDate} endDate={endDate} />;
-      case 'insights':
-        return <Insights />;
-      case 'qualitative':
-        return <QualitativeInsights />;
       case 'faqs':
         return <FaqsPanel />;
+      case 'messages':
+        return <MessageExplorer initialThreadId={threadIdToNavigate || undefined} startDate={startDate} endDate={endDate} />;
       default:
         return <Charts startDate={startDate} endDate={endDate} />;
     }
@@ -129,89 +137,77 @@ function App() {
           </h1>
           <p className="text-xs text-gray-500 mt-1">Chatbot Dashboard</p>
         </div>
-        
+
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <button 
+          <div className="pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Informes
+          </div>
+
+          <button
             onClick={() => setActiveTab('dashboard')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <LayoutDashboard size={18} /> Dashboard
           </button>
-          
-          <div className="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Análisis
-          </div>
 
-          <button 
-            onClick={() => setActiveTab('categories')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'categories' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          <button
+            onClick={() => setActiveTab('gaps')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'gaps' ? 'bg-rose-50 text-rose-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
-            <BarChart3 size={18} /> Categorías
+            <Ban size={18} /> Gaps y Redirecciones
           </button>
 
- 
-          <button 
-            onClick={() => setActiveTab('surveys')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'surveys' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          <button
+            onClick={() => setActiveTab('kpis')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'kpis' ? 'bg-teal-50 text-teal-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
-            <HelpCircle size={18} /> Encuestas
+            <TrendingUp size={18} /> KPIs Explicados
           </button>
 
-          <div className="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Monitorización
-          </div>
-          
-          <button 
-            onClick={() => setActiveTab('failures')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'failures' ? 'bg-red-50 text-red-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          <button
+            onClick={() => setActiveTab('categories-deep')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'categories-deep' ? 'bg-violet-50 text-violet-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
-            <AlertOctagon size={18} /> Fallos
+            <Layers size={18} /> Categorías Profundo
           </button>
-          
-          <button 
-            onClick={() => setActiveTab('referrals')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'referrals' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+
+          <button
+            onClick={() => setActiveTab('products-deep')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'products-deep' ? 'bg-teal-50 text-teal-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
-            <PhoneCall size={18} /> Servilínea
+            <Package size={18} /> Productos Profundo
+          </button>
+
+          <button
+            onClick={() => setActiveTab('failures-deep')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'failures-deep' ? 'bg-orange-50 text-orange-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <BugPlay size={18} /> Fallos Profundo
           </button>
 
           <div className="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Exploración
+            Herramientas
           </div>
-          
-          <button 
-            onClick={() => setActiveTab('messages')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'messages' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <MessageSquare size={18} /> Mensajes
-          </button>
 
-          <button 
+          <button
             onClick={() => setActiveTab('feedbacks')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'feedbacks' ? 'bg-orange-50 text-orange-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <SearchCode size={18} /> Etiquetado (HITL)
           </button>
 
-          <button 
-            onClick={() => setActiveTab('insights')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'insights' ? 'bg-purple-50 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <Activity size={18} /> Insights
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('qualitative')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'qualitative' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <Star size={18} /> Insights Cualitativos
-          </button>
-
-          <button 
+          <button
             onClick={() => setActiveTab('faqs')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'faqs' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <Bookmark size={18} /> Casos de Prueba (FAQ)
+          </button>
+
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'messages' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <MessageSquare size={18} /> Explorador de Mensajes
           </button>
         </nav>
       </div>
@@ -222,17 +218,35 @@ function App() {
              <div>
                 <h2 className="text-2xl font-bold text-gray-900">
                     {activeTab === 'dashboard' && 'Resumen General'}
-                    {activeTab === 'messages' && 'Explorador de Conversaciones'}
-                    {activeTab === 'failures' && 'Detección de Fallos'}
-                    {activeTab === 'text' && 'Análisis de Contenido'}
-                    {activeTab === 'insights' && 'Insights y Tendencias'}
-                    {activeTab === 'uncategorized' && 'Conversaciones Sin Categoría'}
+                    {activeTab === 'gaps' && 'Vacíos de Conocimiento y Canales'}
+                    {activeTab === 'kpis' && 'KPIs con Metodología'}
+                    {activeTab === 'categories-deep' && 'Categorías — Análisis Profundo'}
+                    {activeTab === 'products-deep' && 'Productos — Análisis Profundo'}
+                    {activeTab === 'failures-deep' && 'Fallos — Análisis Profundo'}
                     {activeTab === 'feedbacks' && 'Human In The Loop (Entrenamiento)'}
                     {activeTab === 'faqs' && 'Casos de Prueba Frecuentes'}
+                    {activeTab === 'messages' && 'Explorador de Conversaciones'}
                 </h2>
-                <p className="text-gray-500 text-sm mt-1">Última actualización: {new Date().toLocaleDateString()}</p>
+                <div className="flex items-center gap-2 text-gray-500 text-sm mt-1">
+                    <span className="font-medium">Periodo de datos:</span>
+                    {dataPeriod.start && dataPeriod.end ? (
+                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-bold text-xs border border-blue-100">
+                            {new Date(dataPeriod.start).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - {new Date(dataPeriod.end).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                    ) : (
+                        <span>Cargando...</span>
+                    )}
+                    <span className="mx-2 opacity-30">|</span>
+                    <span>Hoy: {new Date().toLocaleDateString('es-ES')}</span>
+                </div>
              </div>
-             <div>
+             <div className="flex items-center gap-2">
+                <button
+                  onClick={() => api.downloadMarkdownReport()}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                >
+                  <FileDown className="w-4 h-4" /> Descargar Informe
+                </button>
                 <button
                   onClick={handleReprocess}
                   disabled={isReprocessing}
@@ -243,7 +257,7 @@ function App() {
                 </button>
              </div>
         </header>
-        
+
         {isReprocessing && (
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm animate-pulse">
             <div className="flex items-center gap-3">

@@ -52,11 +52,23 @@ def get_general_kpis(df: pd.DataFrame):
     avg_input_tokens = ai_msgs['input_tokens'].mean() if len(ai_msgs) > 0 else 0
     avg_output_tokens = ai_msgs['output_tokens'].mean() if len(ai_msgs) > 0 else 0
 
+    # Bot Friction Metrics
+    # Early abandonment: threads where human sent <= 1 message
+    human_msgs = df[df['type'] == 'human']
+    human_msgs_per_thread = human_msgs.groupby('thread_id').size()
+    
+    abandoned_threads = human_msgs_per_thread[human_msgs_per_thread <= 1].count()
+    abandonment_rate = (abandoned_threads / total_conversations) * 100 if total_conversations > 0 else 0
+    
+    avg_human_messages = human_msgs_per_thread.mean() if not human_msgs_per_thread.empty else 0
+
     return {
         "total_conversations": int(total_conversations),
         "total_messages": int(total_messages),
         "messages_by_type": messages_by_type,
         "avg_messages_per_thread": round(avg_messages_per_thread, 2),
+        "avg_human_messages_per_thread": round(avg_human_messages, 2),
+        "abandonment_rate": round(abandonment_rate, 2),
         "median_messages_per_thread": round(median_messages_per_thread, 2),
         "total_users": int(total_users),
         "avg_conversations_per_user": round(avg_conversations_per_user, 2),
