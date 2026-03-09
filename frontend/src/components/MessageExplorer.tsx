@@ -96,7 +96,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
         try {
             const res = await api.getMessages({
                 page,
-                limit: 20,
+                limit: threadId ? 200 : 20,
                 search: debouncedSearch || undefined,
                 sentiment: sentiment || undefined,
                 product: product || undefined,
@@ -122,7 +122,8 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
         fetchMessages();
     }, [fetchMessages]); 
 
-    const totalPages = Math.ceil(total / 20);
+    const pageSize = threadId ? 200 : 20;
+    const totalPages = Math.ceil(total / pageSize);
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col h-full">
@@ -273,7 +274,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
                                         <div className="flex flex-col gap-1 items-start">
                                             <span className="select-all break-all" title={msg.thread_id}>{msg.thread_id}</span>
                                             <button 
-                                                onClick={() => { setThreadId(msg.thread_id); setPage(1); }}
+                                                onClick={() => { setThreadId(msg.thread_id); setSenderType(''); setSentiment(''); setProduct(''); setMacroCategoria(''); setIntencion(''); setSurveyResult(''); setSearch(''); setPage(1); }}
                                                 className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-[10px]"
                                             >
                                                 Ver hilo completo
@@ -324,7 +325,7 @@ export const MessageExplorer = ({ initialThreadId, startDate, endDate }: Message
             {/* Pagination */}
             <div className="p-4 border-t border-gray-100 flex justify-between items-center bg-gray-50">
                 <span className="text-sm text-gray-500">
-                    Mostrando {(page-1)*20 + 1} - {Math.min(page*20, total)} de {total}
+                    Mostrando {(page-1)*pageSize + 1} - {Math.min(page*pageSize, total)} de {total}
                 </span>
                 <div className="flex space-x-2">
                     <button 
