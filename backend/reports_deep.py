@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 from .metrics import get_general_kpis
 from .dashboard_metrics import get_extended_funnel

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 from .referrals import detect_referrals
 from .failures import get_failures_cached
