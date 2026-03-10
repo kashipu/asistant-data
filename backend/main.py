@@ -533,7 +533,7 @@ def api_failures_detailed(
 
 @app.get("/api/reports/export/markdown")
 def api_export_markdown():
-    """Genera el informe ejecutivo en Markdown y lo devuelve como archivo descargable."""
+    """Genera el informe ejecutivo completo en Markdown y lo devuelve como archivo descargable."""
     from fastapi.responses import Response
     from datetime import datetime
     from .metrics import get_general_kpis
@@ -541,6 +541,12 @@ def api_export_markdown():
     from .categorical import get_categorical_analysis
     from .summary import get_survey_stats
     from .reports import get_volume_report, get_survey_utility_analysis
+    from .reports_deep import (
+        get_kpis_detailed,
+        get_categories_detailed,
+        get_products_detailed,
+        get_failures_detailed,
+    )
 
     df = DataEngine.get_instance().get_messages()
     period = DataEngine.get_instance().get_data_period()
@@ -557,20 +563,32 @@ def api_export_markdown():
     volume_rpt = get_volume_report(df)
     survey_util = get_survey_utility_analysis(df)
 
+    # Deep report data
+    kpis_detailed = get_kpis_detailed(df)
+    categories_detailed = get_categories_detailed(df, referrals_df, failures_df)
+    products_detailed = get_products_detailed(df, referrals_df, failures_df)
+    failures_detailed = get_failures_detailed(df, failures_df)
+
+    # ── Helpers ──────────────────────────────────────────────────────
     def N(n, d=0):
-        if n is None: return "—"
-        if isinstance(n, float): return f"{n:,.{d}f}"
+        if n is None:
+            return "—"
+        if isinstance(n, float):
+            return f"{n:,.{d}f}"
         return f"{int(n):,}"
 
-    def pct_s(v, t): return f"{v/t*100:.1f}%" if t else "0.0%"
+    def pct_s(v, t):
+        return f"{v/t*100:.1f}%" if t else "0.0%"
 
     def md_tbl(rows, headers):
-        if not rows: return "_Sin datos._\n"
+        if not rows:
+            return "_Sin datos._\n"
         sep = "|" + "|".join(["---"] * len(headers)) + "|"
         h = "| " + " | ".join(headers) + " |"
         lines = [h, sep] + ["| " + " | ".join(str(c) for c in r) + " |" for r in rows]
         return "\n".join(lines) + "\n"
 
+    # ── Derived values ───────────────────────────────────────────────
     by_type = kpis.get("messages_by_type", {})
     total_convs = kpis.get("total_conversations", 0)
     total_msgs = kpis.get("total_messages", 0)
@@ -586,32 +604,210 @@ def api_export_markdown():
     ref_rate = fk.get("referral_rate", 0)
     utility = fk.get("utility_index", 0)
 
-    # Top macros
+    # ── Funnel metrics from detailed KPIs ────────────────────────────
+    methodology = kpis_detailed.get("methodology", {})
+
+    # ── Top macros ───────────────────────────────────────────────────
     top_macros = categorical.get("top_macros", {})
     macro_rows = sorted(top_macros.items(), key=lambda x: x[1], reverse=True)[:10]
     m_total = sum(top_macros.values())
-    macro_table = md_tbl([[k, N(v), f"{v/m_total*100:.1f}%"] for k,v in macro_rows], ["Macrocategoría", "Mensajes", "%"])
+    macro_table = md_tbl(
+        [[k, N(v), f"{v/m_total*100:.1f}%"] for k, v in macro_rows],
+        ["Macrocategoría", "Mensajes", "%"],
+    )
 
-    # Top intents
+    # ── Top intents ──────────────────────────────────────────────────
     top_intents = categorical.get("top_intents", {})
     intent_rows = sorted(top_intents.items(), key=lambda x: x[1], reverse=True)[:15]
     i_total = sum(top_intents.values())
-    intent_table = md_tbl([[k, N(v), f"{v/i_total*100:.1f}%"] for k,v in intent_rows], ["Subcategoría", "Mensajes", "%"])
+    intent_table = md_tbl(
+        [[k, N(v), f"{v/i_total*100:.1f}%"] for k, v in intent_rows],
+        ["Subcategoría", "Mensajes", "%"],
+    )
 
-    # Volume report top 20
-    vol_rows = [[r.get("macro_yaml","—"), r.get("categoria_yaml","—"), r.get("product_yaml","—"), N(r.get("count",0)), f"{r.get('percentage',0):.2f}%"] for r in volume_rpt[:20]]
+    # ── Top products ─────────────────────────────────────────────────
+    top_products = categorical.get("top_products", {})
+    prod_rows = sorted(top_products.items(), key=lambda x: x[1], reverse=True)[:15]
+    p_total = sum(top_products.values()) or 1
+    products_summary_table = md_tbl(
+        [[k, N(v), f"{v/p_total*100:.1f}%"] for k, v in prod_rows],
+        ["Producto", "Mensajes", "%"],
+    )
+
+    # ── Temporal: top hours & days ───────────────────────────────────
+    hourly = temporal.get("hourly_volume", {})
+    top_hours = sorted(hourly.items(), key=lambda x: x[1], reverse=True)[:5]
+    hours_table = md_tbl(
+        [[f"{int(h):02d}:00–{int(h):02d}:59", N(v)] for h, v in top_hours],
+        ["Franja horaria", "Mensajes"],
+    )
+
+    dow = temporal.get("day_of_week_volume", {})
+    dow_order = {"Monday": "Lunes", "Tuesday": "Martes", "Wednesday": "Miércoles",
+                 "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado",
+                 "Sunday": "Domingo"}
+    dow_rows = sorted(dow.items(), key=lambda x: x[1], reverse=True)
+    dow_table = md_tbl(
+        [[dow_order.get(d, d), N(v)] for d, v in dow_rows],
+        ["Día", "Mensajes"],
+    )
+
+    # ── Sentiment distribution ───────────────────────────────────────
+    sentiments = categorical.get("sentiment_distribution", {})
+    sent_total = sum(sentiments.values()) or 1
+    sent_table = md_tbl(
+        [[s.capitalize(), N(v), f"{v/sent_total*100:.1f}%"]
+         for s, v in sorted(sentiments.items(), key=lambda x: x[1], reverse=True)],
+        ["Sentimiento", "Mensajes", "%"],
+    )
+
+    # ── Trends (winners / losers) ────────────────────────────────────
+    trends = categorical.get("trends", {})
+    winners = trends.get("winners", [])[:5]
+    losers = trends.get("losers", [])[:5]
+    trends_section = ""
+    if winners or losers:
+        trends_section = "\n### Tendencias de Categorías\n\n"
+        if winners:
+            trends_section += "**Categorías en crecimiento:**\n\n"
+            trends_section += md_tbl(
+                [[w["name"], f"+{w['diff']:,}", f"+{w['pct']:.1f}%"] for w in winners],
+                ["Categoría", "Δ Mensajes", "Δ %"],
+            )
+        if losers:
+            trends_section += "\n**Categorías en descenso:**\n\n"
+            trends_section += md_tbl(
+                [[l["name"], f"{l['diff']:,}", f"{l['pct']:.1f}%"] for l in losers],
+                ["Categoría", "Δ Mensajes", "Δ %"],
+            )
+
+    # ── Categories detailed section ──────────────────────────────────
+    cat_detail_md = ""
+    for macro_data in categories_detailed[:15]:
+        macro_name = macro_data.get("macro", "—")
+        macro_convs = macro_data.get("total_conversations", 0)
+        macro_pct = macro_data.get("pct", 0)
+        cat_detail_md += f"\n#### {macro_name} — {N(macro_convs)} conv. ({macro_pct:.1f}%)\n\n"
+
+        subs = macro_data.get("subcategories", [])
+        sub_rows = []
+        for s in subs[:10]:
+            name = s.get("name", "—")
+            convs = s.get("conversations", 0)
+            spct = s.get("pct_within_macro", 0)
+            util = s.get("utility", {})
+            util_pct = util.get("useful_pct", 0)
+            redir = s.get("redirections", {})
+            redir_pct = redir.get("pct", 0)
+            fail = s.get("bot_failures", {})
+            fail_pct = fail.get("pct", 0)
+            prods = ", ".join(p["name"] for p in s.get("products", [])[:3]) or "—"
+            sub_rows.append([
+                name, N(convs), f"{spct:.1f}%",
+                f"{util_pct:.0f}%", f"{redir_pct:.0f}%", f"{fail_pct:.0f}%",
+                prods,
+            ])
+        cat_detail_md += md_tbl(
+            sub_rows,
+            ["Subcategoría", "Conv.", "% Macro", "Utilidad", "Redirig.", "Fallos", "Productos"],
+        )
+
+    # ── Products detailed section ────────────────────────────────────
+    prod_detail_md = ""
+    for pmacro in products_detailed[:12]:
+        pm_name = pmacro.get("macro", "—")
+        pm_convs = pmacro.get("total_conversations", 0)
+        pm_pct = pmacro.get("pct", 0)
+        prod_detail_md += f"\n#### {pm_name} — {N(pm_convs)} conv. ({pm_pct:.1f}%)\n\n"
+
+        prods = pmacro.get("products", [])
+        prod_detail_rows = []
+        for p in prods[:8]:
+            pname = p.get("name", "—")
+            pconvs = p.get("conversations", 0)
+            ppct = p.get("pct_within_macro", 0)
+            util = p.get("utility", {})
+            util_pct = util.get("useful_pct", 0)
+            redir = p.get("redirections", {})
+            redir_pct = redir.get("pct", 0)
+            fail = p.get("bot_failures", {})
+            fail_pct = fail.get("pct", 0)
+            top_cats = ", ".join(c["name"] for c in p.get("top_categories", [])[:3]) or "—"
+            sents = p.get("sentiments", {})
+            sent_str = f"+{sents.get('positivo',0)} / ={sents.get('neutral',0)} / -{sents.get('negativo',0)}"
+            prod_detail_rows.append([
+                pname, N(pconvs), f"{ppct:.1f}%",
+                f"{util_pct:.0f}%", f"{redir_pct:.0f}%", f"{fail_pct:.0f}%",
+                top_cats,
+            ])
+        prod_detail_md += md_tbl(
+            prod_detail_rows,
+            ["Producto", "Conv.", "% Macro", "Utilidad", "Redirig.", "Fallos", "Top Categorías"],
+        )
+
+    # ── Failures detailed section ────────────────────────────────────
+    fail_n = failures_detailed.get("total", 0)
+    fail_total_convs = failures_detailed.get("total_conversations", 0)
+    criteria_global = failures_detailed.get("criteria_global", {})
+    criteria_table = md_tbl(
+        [[c, N(v), f"{v/fail_n*100:.1f}%"] for c, v in
+         sorted(criteria_global.items(), key=lambda x: x[1], reverse=True)],
+        ["Criterio de fallo", "Casos", "% del total fallos"],
+    ) if fail_n else "_Sin datos._\n"
+
+    fail_by_cat = failures_detailed.get("by_category", [])
+    fail_cat_rows = []
+    for fc in fail_by_cat[:15]:
+        cat = fc.get("category", "—")
+        cnt = fc.get("count", 0)
+        fpct = fc.get("pct", 0)
+        top_crit = ", ".join(
+            f"{c}({v})" for c, v in
+            sorted(fc.get("criteria_breakdown", {}).items(), key=lambda x: x[1], reverse=True)[:2]
+        ) or "—"
+        top_prods = ", ".join(p["name"] for p in fc.get("top_products", [])[:2]) or "—"
+        redir_pct = fc.get("redirected_pct", 0)
+        fail_cat_rows.append([cat, N(cnt), f"{fpct:.1f}%", top_crit, top_prods, f"{redir_pct:.0f}%"])
+    fail_cat_table = md_tbl(
+        fail_cat_rows,
+        ["Categoría", "Fallos", "% Total", "Criterios principales", "Productos", "% Redirigido"],
+    )
+
+    # ── Survey utility top 15 ────────────────────────────────────────
+    util_rows = [
+        [
+            r.get("macro", "—"), r.get("categoria", "—"), r.get("producto", "—"),
+            N(r.get("useful", 0)), N(r.get("not_useful", 0)),
+            N(r.get("total", 0)), f"{r.get('utility_rate', 0):.1f}%",
+        ]
+        for r in survey_util[:15]
+    ]
+    util_table = md_tbl(
+        util_rows,
+        ["Macro", "Categoría", "Producto", "Útil", "No útil", "Total", "% Utilidad"],
+    )
+
+    # ── Volume report top 20 ─────────────────────────────────────────
+    vol_rows = [
+        [
+            r.get("macro_yaml", "—"), r.get("categoria_yaml", "—"),
+            r.get("product_yaml", "—"), N(r.get("count", 0)),
+            f"{r.get('percentage', 0):.2f}%",
+        ]
+        for r in volume_rpt[:20]
+    ]
     vol_table = md_tbl(vol_rows, ["Macro", "Categoría", "Producto", "Mensajes", "%"])
 
-    # Survey utility top 10
-    util_rows = [[r.get("macro","—"), r.get("categoria","—"), N(r.get("useful",0)), N(r.get("not_useful",0)), N(r.get("total",0)), f"{r.get('utility_rate',0):.1f}%"] for r in survey_util[:10]]
-    util_table = md_tbl(util_rows, ["Macro", "Categoría", "Útil", "No útil", "Total", "% Utilidad"])
+    # ── Methodology ──────────────────────────────────────────────────
+    method_md = ""
+    for key, m in methodology.items():
+        method_md += f"- **{key.replace('_', ' ').title()}**: {m.get('description', '')} "
+        method_md += f"Fórmula: `{m.get('formula', '')}` = {m.get('result', 0)}{m.get('unit', '')}\n"
 
-    # Failures summary
-    fail_n = len(failures_df) if failures_df is not None and not failures_df.empty else 0
-
+    # ── Build final document ─────────────────────────────────────────
     content = f"""# Informe Ejecutivo — Asistente Virtual
 
-**Período:** {period.get('start','N/A')} — {period.get('end','N/A')}
+**Período:** {period.get('start', 'N/A')} — {period.get('end', 'N/A')}
 **Generado:** {generated_at.strftime('%Y-%m-%d %H:%M:%S')}
 **Fuente:** data/chat_data.db · {N(total_msgs)} mensajes · {N(total_convs)} conversaciones
 
@@ -622,11 +818,14 @@ def api_export_markdown():
 | Indicador | Valor |
 |---|---|
 | Total conversaciones | {N(total_convs)} |
-| Usuarios únicos | {N(fk.get('unique_users',0))} |
-| Tasa de abandono | {abandon_rate:.1f}% |
+| Usuarios únicos | {N(fk.get('unique_users', 0))} |
+| Tasa de abandono | {abandon_rate:.1f}% ({N(abandon_n)} conv.) |
 | Auto-servicio | {self_svc:.1f}% |
+| Tasa de derivación | {ref_rate:.1f}% |
 | Índice de utilidad | {utility:.1f}% |
+| Encuestas respondidas | {N(total_surveys)} (útil: {N(useful_s)}, no útil: {N(not_useful_s)}) |
 | Gasto de valor | {N(waste_count)} conv. ({waste_pct:.1f}%) |
+| Conversaciones con fallo | {N(fail_n)} ({pct_s(fail_n, total_convs)}) |
 
 ---
 
@@ -635,31 +834,76 @@ def api_export_markdown():
 | KPI | Valor |
 |---|---|
 | Total mensajes | {N(total_msgs)} |
-| Mensajes humanos | {N(by_type.get('human',0))} ({pct_s(by_type.get('human',0), total_msgs)}) |
-| Mensajes bot (AI) | {N(by_type.get('ai',0))} ({pct_s(by_type.get('ai',0), total_msgs)}) |
-| Promedio msgs/conv | {kpis.get('avg_messages_per_thread',0):.2f} |
+| Mensajes humanos | {N(by_type.get('human', 0))} ({pct_s(by_type.get('human', 0), total_msgs)}) |
+| Mensajes bot (AI) | {N(by_type.get('ai', 0))} ({pct_s(by_type.get('ai', 0), total_msgs)}) |
+| Mensajes tool | {N(by_type.get('tool', 0))} ({pct_s(by_type.get('tool', 0), total_msgs)}) |
+| Promedio msgs/conv | {kpis.get('avg_messages_per_thread', 0):.2f} |
 | Abandono (≤1 msg humano) | {N(abandon_n)} ({abandon_rate:.1f}%) |
-| Auto-servicio | {fk.get('self_service_rate',0):.1f}% |
+| Auto-servicio | {self_svc:.1f}% |
+| Tasa de derivación | {ref_rate:.1f}% |
 | Encuestas respondidas | {N(total_surveys)} |
 | Índice de utilidad | {utility:.1f}% |
-| Tokens entrada (total) | {N(kpis.get('total_input_tokens',0))} |
-| Tokens salida (total) | {N(kpis.get('total_output_tokens',0))} |
+| Tokens entrada (total) | {N(kpis.get('total_input_tokens', 0))} |
+| Tokens salida (total) | {N(kpis.get('total_output_tokens', 0))} |
 
 ---
 
-## 2. Distribución de Categorías
+## 2. Patrones Temporales
 
-### Macrocategorías
+### Horas de mayor volumen
+
+{hours_table}
+
+### Volumen por día de la semana
+
+{dow_table}
+
+---
+
+## 3. Distribución de Sentimiento
+
+{sent_table}
+
+---
+
+## 4. Distribución de Categorías
+
+### Macrocategorías (Top 10)
 
 {macro_table}
 
 ### Top 15 Subcategorías
 
 {intent_table}
+{trends_section}
 
 ---
 
-## 3. Calidad y Fricción
+## 5. Análisis Detallado por Categoría
+
+Desglose macro → subcategoría con métricas de resultado (utilidad, redirecciones, fallos) y productos asociados.
+
+{cat_detail_md}
+
+---
+
+## 6. Distribución de Productos
+
+### Productos más consultados (Top 15)
+
+{products_summary_table}
+
+---
+
+## 7. Análisis Detallado por Producto
+
+Desglose por macro de producto → producto con métricas de resultado y categorías principales.
+
+{prod_detail_md}
+
+---
+
+## 8. Calidad y Fricción
 
 | Métrica | Valor |
 |---|---|
@@ -667,17 +911,31 @@ def api_export_markdown():
 | Conversaciones derivadas | {N(int(total_convs * ref_rate / 100) if total_convs else 0)} ({ref_rate:.1f}%) |
 | Gasto de valor | {N(waste_count)} ({waste_pct:.1f}%) |
 
+### Criterios de fallo globales
+
+{criteria_table}
+
+### Fallos por categoría (Top 15)
+
+{fail_cat_table}
+
 ---
 
-## 4. Utilidad por Categoría (Encuestas)
+## 9. Utilidad por Categoría y Producto (Encuestas)
 
 {util_table}
 
 ---
 
-## 5. Reporte de Volumen Detallado
+## 10. Reporte de Volumen Detallado
 
 {vol_table}
+
+---
+
+## Metodología
+
+{method_md}
 
 ---
 *Generado automáticamente por el endpoint /api/reports/export/markdown — {generated_at.strftime('%Y-%m-%d %H:%M')}*
@@ -687,6 +945,6 @@ def api_export_markdown():
     return Response(
         content=content.encode("utf-8"),
         media_type="text/markdown",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
