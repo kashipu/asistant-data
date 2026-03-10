@@ -556,7 +556,8 @@ def api_export_markdown():
     generated_at = datetime.now()
     kpis = get_general_kpis(df)
     funnel_data = get_extended_funnel(df)
-    fk = funnel_data.get("kpis", {})
+    # Build lookup from metrics list: {id: metric_dict}
+    _funnel_metrics = {m["id"]: m for m in funnel_data.get("metrics", []) if "id" in m}
     temporal = get_temporal_analysis(df)
     categorical = get_categorical_analysis(df)
     survey_stats = get_survey_stats(df)
@@ -598,11 +599,23 @@ def api_export_markdown():
     total_surveys = s_stats.get("total", 0)
     useful_s = s_stats.get("useful", 0)
     not_useful_s = s_stats.get("not_useful", 0)
-    waste_count = fk.get("value_waste_count", 0)
-    waste_pct = fk.get("value_waste_pct", 0)
-    self_svc = fk.get("self_service_rate", 0)
-    ref_rate = fk.get("referral_rate", 0)
-    utility = fk.get("utility_index", 0)
+    # Extract funnel KPIs from metrics list
+    _fm = _funnel_metrics  # shorthand
+    waste_count = _fm.get("waste", {}).get("count", 0)
+    waste_pct = _fm.get("waste", {}).get("pct", 0)
+    total_active = _fm.get("active", {}).get("count", 0)
+    self_svc = _fm.get("self_service", {}).get("pct", 0)
+    ref_rate = _fm.get("referred", {}).get("pct", 0)
+    total_useful = _fm.get("useful", {}).get("count", 0)
+    total_answered = _fm.get("answered", {}).get("count", 0)
+    utility = round(total_useful / total_answered * 100, 1) if total_answered else 0
+    unique_users = total_convs  # each thread ≈ unique user (best proxy available)
+    greeting_count = _fm.get("greeting_only", {}).get("count", 0)
+    greeting_pct = _fm.get("greeting_only", {}).get("pct", 0)
+    self_svc_count = _fm.get("self_service", {}).get("count", 0)
+    ref_count = _fm.get("referred", {}).get("count", 0)
+    failures_count = _fm.get("failures", {}).get("count", 0)
+    failures_pct = _fm.get("failures", {}).get("pct", 0)
 
     # ── Funnel metrics from detailed KPIs ────────────────────────────
     methodology = kpis_detailed.get("methodology", {})
@@ -680,6 +693,31 @@ def api_export_markdown():
                 [[l["name"], f"{l['diff']:,}", f"{l['pct']:.1f}%"] for l in losers],
                 ["Categoría", "Δ Mensajes", "Δ %"],
             )
+
+    # ── Category glossary from YAML ──────────────────────────────────
+    import yaml as _yaml
+    import os as _os
+    _cat_yaml_path = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "categorias.yml")
+    _glossary_md = ""
+    try:
+        with open(_cat_yaml_path, "r", encoding="utf-8") as _f:
+            _cat_cfg = _yaml.safe_load(_f)
+        # Group by macro
+        _by_macro: dict[str, list[dict]] = {}
+        for _cat in _cat_cfg.get("categorias", []):
+            _macro = _cat.get("macro", "Sin Macro")
+            _by_macro.setdefault(_macro, []).append(_cat)
+        # Build glossary grouped by macro
+        for _macro_name, _subs in _by_macro.items():
+            _glossary_md += f"\n#### {_macro_name}\n\n"
+            _sub_rows = []
+            for _s in _subs:
+                _nombre = _s.get("nombre", "—")
+                _desc = _s.get("descripcion", "Sin descripción")
+                _sub_rows.append([_nombre, _desc])
+            _glossary_md += md_tbl(_sub_rows, ["Subcategoría", "Descripción"])
+    except Exception:
+        _glossary_md = "_No se pudo cargar el archivo categorias.yml._\n"
 
     # ── Categories detailed section ──────────────────────────────────
     cat_detail_md = ""
@@ -818,14 +856,16 @@ def api_export_markdown():
 | Indicador | Valor |
 |---|---|
 | Total conversaciones | {N(total_convs)} |
-| Usuarios únicos | {N(fk.get('unique_users', 0))} |
+| Usuarios únicos (aprox.) | {N(unique_users)} |
+| Conversaciones activas | {N(total_active)} ({pct_s(total_active, total_convs)}) |
+| Solo saludo | {N(greeting_count)} ({greeting_pct:.1f}%) |
 | Tasa de abandono | {abandon_rate:.1f}% ({N(abandon_n)} conv.) |
-| Auto-servicio | {self_svc:.1f}% |
-| Tasa de derivación | {ref_rate:.1f}% |
-| Índice de utilidad | {utility:.1f}% |
+| Auto-servicio | {self_svc:.1f}% de activas ({N(self_svc_count)} conv.) |
+| Tasa de derivación | {ref_rate:.1f}% de activas ({N(ref_count)} conv.) |
+| Índice de utilidad | {utility:.1f}% ({N(total_useful)} útil / {N(total_answered)} contestadas) |
 | Encuestas respondidas | {N(total_surveys)} (útil: {N(useful_s)}, no útil: {N(not_useful_s)}) |
 | Gasto de valor | {N(waste_count)} conv. ({waste_pct:.1f}%) |
-| Conversaciones con fallo | {N(fail_n)} ({pct_s(fail_n, total_convs)}) |
+| Conversaciones con fallo | {N(failures_count)} ({failures_pct:.1f}% de activas) |
 
 ---
 
@@ -879,7 +919,15 @@ def api_export_markdown():
 
 ---
 
-## 5. Análisis Detallado por Categoría
+## 5. Glosario de Categorías y Subcategorías
+
+A continuación se describe qué contiene cada macrocategoría y subcategoría utilizada en la clasificación. Esto permite interpretar correctamente las métricas de las secciones siguientes.
+
+{_glossary_md}
+
+---
+
+## 6. Análisis Detallado por Categoría
 
 Desglose macro → subcategoría con métricas de resultado (utilidad, redirecciones, fallos) y productos asociados.
 
@@ -887,7 +935,7 @@ Desglose macro → subcategoría con métricas de resultado (utilidad, redirecci
 
 ---
 
-## 6. Distribución de Productos
+## 7. Distribución de Productos
 
 ### Productos más consultados (Top 15)
 
@@ -895,7 +943,7 @@ Desglose macro → subcategoría con métricas de resultado (utilidad, redirecci
 
 ---
 
-## 7. Análisis Detallado por Producto
+## 8. Análisis Detallado por Producto
 
 Desglose por macro de producto → producto con métricas de resultado y categorías principales.
 
@@ -903,7 +951,7 @@ Desglose por macro de producto → producto con métricas de resultado y categor
 
 ---
 
-## 8. Calidad y Fricción
+## 9. Calidad y Fricción
 
 | Métrica | Valor |
 |---|---|
@@ -921,13 +969,13 @@ Desglose por macro de producto → producto con métricas de resultado y categor
 
 ---
 
-## 9. Utilidad por Categoría y Producto (Encuestas)
+## 10. Utilidad por Categoría y Producto (Encuestas)
 
 {util_table}
 
 ---
 
-## 10. Reporte de Volumen Detallado
+## 11. Reporte de Volumen Detallado
 
 {vol_table}
 
