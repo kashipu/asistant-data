@@ -242,7 +242,7 @@ function App() {
              </div>
              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => api.downloadMarkdownReport()}
+                  onClick={() => api.downloadMarkdownReport({ startDate: startDate || undefined, endDate: endDate || undefined, full: true })}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
                 >
                   <FileDown className="w-4 h-4" /> Descargar Informe

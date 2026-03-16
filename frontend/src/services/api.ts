@@ -63,12 +63,25 @@ export const api = {
   }) => axios.get(`${API_URL}/reports/category-threads`, { params }).then(r => r.data),
   getFailuresDetailed: (params?: { start_date?: string; end_date?: string }) =>
     axios.get(`${API_URL}/reports/failures-detailed`, { params }).then(r => r.data),
-  downloadMarkdownReport: async () => {
-    const response = await axios.get(`${API_URL}/reports/export/markdown`, { responseType: 'blob' });
+  downloadMarkdownReport: async (opts?: {
+    startDate?: string;
+    endDate?: string;
+    full?: boolean;
+    reportType?: 'executive' | 'deep';
+  }) => {
+    const params = new URLSearchParams();
+    if (opts?.startDate) params.set('start_date', opts.startDate);
+    if (opts?.endDate) params.set('end_date', opts.endDate);
+    if (opts?.full) params.set('full', 'true');
+    if (opts?.reportType) params.set('report_type', opts.reportType);
+    const qs = params.toString();
+    const url_api = `${API_URL}/reports/export/markdown${qs ? `?${qs}` : ''}`;
+    const response = await axios.get(url_api, { responseType: 'blob' });
+    const prefix = opts?.reportType === 'deep' ? 'informe_profundo' : 'informe_ejecutivo';
     const url = URL.createObjectURL(new Blob([response.data], { type: 'text/markdown' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `informe_ejecutivo_${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `${prefix}_${new Date().toISOString().slice(0, 10)}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
