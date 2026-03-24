@@ -1644,23 +1644,56 @@ def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
     parent_line = f"\n**Macro:** {parent}" if parent else ""
 
     # --- Section 1: KPIs ---
+    total_global = kpis.get("total_global", 0)
+    pct_global = kpis.get("pct_of_global", 0)
+
     kpi_rows = [
-        ["Total conversaciones", N(n)],
+        ["Conversaciones del chatbot", N(total_global)],
+        [f"Conversaciones en este {dim_label.lower()}", f"{N(n)} ({pct_global:.1f}% del total)"],
         ["Total mensajes", N(total_msgs)],
-        ["Encuestados", f"{N(kpis.get('surveyed', 0))} ({kpis.get('surveyed_pct', 0):.1f}%)"],
-        ["Con errores IA", f"{N(kpis.get('failures', 0))} ({kpis.get('failure_pct', 0):.1f}%)"],
-        ["Redirigidos", f"{N(kpis.get('redirected', 0))} ({kpis.get('redirected_pct', 0):.1f}%)"],
-        ["Auto-servicio", f"{N(kpis.get('self_service', 0))} ({kpis.get('self_service_pct', 0):.1f}%)"],
     ]
     kpi_table = md_table(kpi_rows, ["Indicador", "Valor"])
 
-    # --- Section 2: What users ask ---
-    item_label = "Categorías" if report["dimension"] == "product" else "Productos"
-    item_rows = [
-        [it["name"], N(it["conversations"]), f"{it['pct']:.1f}%"]
-        for it in top_items
+    # Funnel metrics
+    funnel_rows = [
+        ["Redirigidos", f"{N(kpis.get('redirected', 0))} ({kpis.get('redirected_pct', 0):.1f}%)"],
+        ["Auto-servicio", f"{N(kpis.get('self_service', 0))} ({kpis.get('self_service_pct', 0):.1f}%)"],
+        ["Con errores IA", f"{N(kpis.get('failures', 0))} ({kpis.get('failure_pct', 0):.1f}%)"],
+        ["Llegaron buscando asesor", f"{N(kpis.get('arrived_seeking_advisor', 0))} ({kpis.get('arrived_seeking_pct', 0):.1f}%)"],
+        ["Terminaron pidiendo asesor", f"{N(kpis.get('organic_escalation', 0))} ({kpis.get('organic_escalation_pct', 0):.1f}%)"],
+        ["Bot falló y fueron redirigidos", f"{N(kpis.get('bot_failed_redirected', 0))} ({kpis.get('bot_failed_redirected_pct', 0):.1f}%)"],
     ]
-    items_table = md_table(item_rows, [item_label, "Conversaciones", "%"])
+    funnel_table = md_table(funnel_rows, ["Métrica", "Valor"])
+
+    # Utility metrics
+    surveyed = kpis.get("surveyed", 0)
+    useful = kpis.get("useful", 0)
+    not_useful = kpis.get("not_useful", 0)
+    useful_pct = kpis.get("useful_pct", 0)
+    utility_rows = [
+        ["Encuestados", f"{N(surveyed)} ({kpis.get('surveyed_pct', 0):.1f}%)"],
+        ["Me fue útil", N(useful)],
+        ["No me fue útil", N(not_useful)],
+        ["Índice de utilidad", f"{useful_pct:.1f}%"],
+    ]
+    utility_table = md_table(utility_rows, ["Indicador", "Valor"])
+
+    # --- Section 4: What users ask ---
+    item_label = "Categorías" if report["dimension"] == "product" else "Productos"
+    # Table with description column
+    has_descriptions = any(it.get("description") for it in top_items)
+    if has_descriptions:
+        item_rows = [
+            [it["name"], it.get("description", "")[:80], N(it["conversations"]), f"{it['pct']:.1f}%"]
+            for it in top_items
+        ]
+        items_table = md_table(item_rows, [item_label, "Descripción", "Conversaciones", "%"])
+    else:
+        item_rows = [
+            [it["name"], N(it["conversations"]), f"{it['pct']:.1f}%"]
+            for it in top_items
+        ]
+        items_table = md_table(item_rows, [item_label, "Conversaciones", "%"])
 
     phrases_list = "\n".join(
         f"- \"{p['phrase']}\" ({N(p['count'])} veces)"
@@ -1742,7 +1775,7 @@ def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
         uq_rows = [[f"\"{q['phrase']}\"", N(q["count"])] for q in unanswered_questions]
         uq_table = md_table(uq_rows, ["Pregunta del usuario", "Veces"])
         unanswered_section = f"""
-### 3.1 Preguntas que el bot no supo responder
+### 5.1 Preguntas que el bot no supo responder
 
 > Frases reales de usuarios en conversaciones donde el asistente falló.
 > Excluye mensajes de encuesta y retroalimentación.
@@ -1755,12 +1788,6 @@ def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
     redir_pct = redirections.get("pct", 0)
     by_channel = redirections.get("by_channel", {})
     channel_table = dict_to_table(by_channel, "Canal", "Conversaciones") if by_channel else "_Sin redirecciones._\n"
-
-    # --- Section 5: Utility ---
-    u_useful = utility.get("useful", 0)
-    u_not = utility.get("not_useful", 0)
-    u_no_survey = utility.get("no_survey", 0)
-    u_pct = utility.get("useful_pct", 0)
 
     sent_total = sum(sentiments.values()) or 1
     sent_rows = [
@@ -1787,22 +1814,45 @@ def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
 
 ---
 
-## 1. Indicadores Generales
+## 1. Volumen y Representatividad
+
+> Cuántas conversaciones tiene este {dim_label.lower()} y qué porcentaje representa del total del chatbot.
 
 {kpi_table}
 
-## 2. ¿Qué Preguntan los Usuarios?
+## 2. Embudo de Atención
 
-### 2.1 {item_label} principales
+> De las {N(n)} conversaciones, cuántas fueron resueltas por el bot, cuántas redirigidas,
+> cuántas llegaron buscando asesor y cuántas terminaron escalando porque el bot no resolvió.
+
+{funnel_table}
+
+## 3. Percepción de Utilidad
+
+> Resultados de la encuesta de satisfacción y sentimiento de los mensajes humanos.
+
+{utility_table}
+
+### Sentimiento
+
+{sent_table}
+
+## 4. ¿Qué Preguntan los Usuarios?
+
+> {item_label} y temas más frecuentes dentro de las conversaciones de {value}.
+
+### 4.1 {item_label} principales
 
 {items_table}
 {subcategories_section}
-### 2.3 Frases más frecuentes
+### 4.2 Frases más frecuentes
 
 {phrases_list}
 {questions_block}{underlying_section}
 
-## 3. ¿Qué No Puede Responder el Asistente?
+## 5. ¿Qué No Puede Responder el Asistente?
+
+> Conversaciones donde el bot no logró resolver la consulta del usuario.
 
 **Total fallos:** {N(fail_total)} ({fail_pct:.1f}% de las conversaciones)
 
@@ -1811,28 +1861,15 @@ def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
 {examples_table}
 {unanswered_section}
 
-## 4. Redirecciones
+## 6. Redirecciones
+
+> Conversaciones derivadas a canales de atención humana.
 
 **Total redirigidas:** {N(redir_total)} ({redir_pct:.1f}%)
 
 {channel_table}
 
-## 5. Percepción de Utilidad
-
-| Indicador | Valor |
-|---|---|
-| Me fue útil | {N(u_useful)} |
-| No me fue útil | {N(u_not)} |
-| Sin encuesta | {N(u_no_survey)} |
-| Índice de utilidad | {u_pct:.1f}% |
-
-{advisor_line}
-
-### Sentimiento
-
-{sent_table}
-
-## 6. Hilos de Referencia
+## 7. Hilos de Referencia
 
 > Estos IDs permiten buscar las conversaciones completas en el Excel o en el Explorador de Mensajes.
 

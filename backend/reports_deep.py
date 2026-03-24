@@ -879,6 +879,7 @@ def get_dimension_report(df: pd.DataFrame,
 
     dim_threads = set(filtered["thread_id"].unique())
     n = len(dim_threads)
+    total_global = hdf["thread_id"].nunique()
     total_msgs = int(df[df["thread_id"].isin(dim_threads)].shape[0])
 
     # Parent (product_macro for products)
@@ -902,22 +903,55 @@ def get_dimension_report(df: pd.DataFrame,
 
     # --- KPIs ---
     surveyed_threads = dim_threads & (survey_useful | survey_not_useful)
+    useful_threads = dim_threads & survey_useful
+    not_useful_threads = dim_threads & survey_not_useful
     failed_threads = dim_threads & failure_threads
     redirected_threads = dim_threads & referral_threads
     self_service_threads = dim_threads - redirected_threads
 
+    # --- Advisor escalation (scoped to this dimension) ---
+    arrived_seeking_advisor = set()
+    if "categoria_yaml" in filtered.columns:
+        esc_df = filtered[filtered["categoria_yaml"] == "Escalamiento a Asesor"]
+        arrived_seeking_advisor = set(esc_df["thread_id"].unique())
+    organic_escalation = redirected_threads - arrived_seeking_advisor
+    bot_failed_redirected = (failed_threads & redirected_threads) - arrived_seeking_advisor
+
     kpis = {
         "surveyed": len(surveyed_threads),
         "surveyed_pct": round(len(surveyed_threads) / n * 100, 1) if n else 0.0,
+        "useful": len(useful_threads),
+        "not_useful": len(not_useful_threads),
+        "useful_pct": round(len(useful_threads) / len(surveyed_threads) * 100, 1) if surveyed_threads else 0.0,
         "failures": len(failed_threads),
         "failure_pct": round(len(failed_threads) / n * 100, 1) if n else 0.0,
         "redirected": len(redirected_threads),
         "redirected_pct": round(len(redirected_threads) / n * 100, 1) if n else 0.0,
         "self_service": len(self_service_threads),
         "self_service_pct": round(len(self_service_threads) / n * 100, 1) if n else 0.0,
+        "total_global": total_global,
+        "pct_of_global": round(n / total_global * 100, 1) if total_global else 0.0,
+        "arrived_seeking_advisor": len(arrived_seeking_advisor),
+        "arrived_seeking_pct": round(len(arrived_seeking_advisor) / n * 100, 1) if n else 0.0,
+        "organic_escalation": len(organic_escalation),
+        "organic_escalation_pct": round(len(organic_escalation) / n * 100, 1) if n else 0.0,
+        "bot_failed_redirected": len(bot_failed_redirected),
+        "bot_failed_redirected_pct": round(len(bot_failed_redirected) / n * 100, 1) if n else 0.0,
     }
 
     # --- Breakdown (categories if product, products if category) ---
+    # Load category descriptions from YAML for context
+    cat_descriptions = {}
+    try:
+        import yaml, os
+        yml_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "categorias.yml")
+        with open(yml_path, encoding="utf-8") as f:
+            yml = yaml.safe_load(f)
+        for c in yml.get("categorias", []):
+            cat_descriptions[c["nombre"]] = c.get("descripcion", "")
+    except Exception:
+        pass
+
     if breakdown_col in filtered.columns:
         bd_data = filtered[
             filtered[breakdown_col].notna() & (~filtered[breakdown_col].isin(skip_breakdown))
@@ -930,7 +964,8 @@ def get_dimension_report(df: pd.DataFrame,
         )
         top_items = [
             {"name": str(name), "conversations": int(cnt),
-             "pct": round(cnt / n * 100, 1) if n else 0.0}
+             "pct": round(cnt / n * 100, 1) if n else 0.0,
+             "description": cat_descriptions.get(str(name), "")}
             for name, cnt in bd_counts.items()
         ]
     else:
@@ -1049,7 +1084,19 @@ def get_dimension_report(df: pd.DataFrame,
                 "criteria": str(row.get("criteria", "")),
             })
 
-    # --- Sample threads (most recent 50) ---
+    # --- Sample threads (most recent 50, with first substantive message) ---
+    # For each thread, find the first human message that isn't noise/greeting
+    substantive = filtered[~filtered["text"].apply(_is_noise) & ~filtered["text"].apply(_is_system_or_survey)]
+    # Fallback to any message if all are noise
+    first_msg_map = {}
+    for tid in dim_threads:
+        t_msgs = substantive[substantive["thread_id"] == tid]
+        if not t_msgs.empty:
+            first_msg_map[tid] = str(t_msgs.iloc[0]["text"])[:200]
+        else:
+            t_all = filtered[filtered["thread_id"] == tid]
+            first_msg_map[tid] = str(t_all.iloc[0]["text"])[:200] if not t_all.empty else ""
+
     sample_data = filtered.sort_values("fecha", ascending=False).drop_duplicates("thread_id").head(50)
     sample_threads = []
     for _, row in sample_data.iterrows():
@@ -1058,10 +1105,11 @@ def get_dimension_report(df: pd.DataFrame,
             fecha = fecha.strftime("%Y-%m-%d")
         else:
             fecha = str(fecha)[:10] if pd.notna(fecha) else ""
+        tid = str(row["thread_id"])
         sample_threads.append({
-            "thread_id": str(row["thread_id"]),
+            "thread_id": tid,
             "fecha": fecha,
-            "first_message": str(row.get("text", ""))[:200],
+            "first_message": first_msg_map.get(tid, str(row.get("text", ""))[:200]),
             "sentiment": str(row.get("sentiment", "neutral")),
         })
 
