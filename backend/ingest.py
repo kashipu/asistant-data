@@ -93,20 +93,30 @@ def _load_products():
 def _match_product_nlp(text, products):
     """
     Returns (nombre, macro) for the first product whose palabras_clave match the text.
+    Supports regex patterns (keywords starting with ^ or ending with $).
     Returns (None, None) if no match.
     """
     if not text or not text.strip():
         return None, None
     clean = _clean_for_nlp(text)
+    lower = text.lower().strip()
     for prod in products:
         nombre = prod.get('nombre', '')
         macro  = prod.get('macro', nombre)
         for kw in prod.get('palabras_clave', []):
             if not kw:
                 continue
-            kw_clean = _clean_for_nlp(kw)
-            if kw_clean and kw_clean in clean:
-                return nombre, macro
+            kw_str = str(kw)
+            if kw_str.startswith('^') or kw_str.endswith('$') or '\\b' in kw_str:
+                try:
+                    if re.search(kw_str, lower):
+                        return nombre, macro
+                except re.error:
+                    pass
+            else:
+                kw_clean = _clean_for_nlp(kw_str)
+                if kw_clean and kw_clean in clean:
+                    return nombre, macro
     return None, None
 
 # Noise keywords that should be categorized as "Saludos" or "Sin Sentido" without review.

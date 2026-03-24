@@ -148,7 +148,9 @@ productos:
       - hipoteca
       - leasing habitacional
       - subsidio de vivienda
-      - vis
+      - \bvis\b
+      - vivienda vis
+      - vivienda no vis
 
   - nombre: Crédito de Vehículo
     macro: Créditos

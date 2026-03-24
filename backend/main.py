@@ -23,7 +23,7 @@ from .category_discovery import run_category_discovery
 from .reports import get_volume_report, get_survey_utility_analysis
 from .gaps_analysis import analyze_gaps_and_referrals
 from .dashboard_metrics import get_extended_funnel
-from .reports_deep import get_kpis_detailed, get_categories_detailed, get_failures_detailed, get_category_threads, get_products_detailed
+from .reports_deep import get_kpis_detailed, get_categories_detailed, get_failures_detailed, get_category_threads, get_products_detailed, get_dimension_report
 import time
 
 app = FastAPI(title="Chatbot Analysis API")
@@ -568,6 +568,112 @@ def api_export_markdown(
     return Response(
         content=content.encode("utf-8"),
         media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.get("/api/reports/dimension-report/export/markdown")
+def api_dimension_report_markdown(
+    dimension: str = Query(..., pattern="^(product|category)$"),
+    value: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """Export a per-product or per-category report as Markdown."""
+    from fastapi.responses import Response
+    from .report_builder import build_dimension_report_md
+
+    engine = DataEngine.get_instance()
+    df = engine.get_messages(start_date, end_date)
+    failures_df = engine.get_failures()
+    referrals_df = engine.get_referrals()
+    period = engine.get_data_period()
+
+    if start_date or end_date:
+        for frame_name in ("failures_df", "referrals_df"):
+            frame = failures_df if frame_name == "failures_df" else referrals_df
+            if frame is not None and not frame.empty and "fecha" in frame.columns:
+                mask = pd.Series(True, index=frame.index)
+                if start_date:
+                    mask &= frame["fecha"].astype(str) >= start_date
+                if end_date:
+                    mask &= frame["fecha"].astype(str) <= end_date
+                if frame_name == "failures_df":
+                    failures_df = frame[mask]
+                else:
+                    referrals_df = frame[mask]
+
+    report = get_dimension_report(df, referrals_df, failures_df, dimension, value)
+    content = build_dimension_report_md(report, period)
+
+    dim_label = "producto" if dimension == "product" else "categoria"
+    safe_value = value.replace(" ", "_").replace("/", "-")
+    filename = f"reporte_{dim_label}_{safe_value}.md"
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.get("/api/reports/dimension-report/export/csv")
+def api_dimension_report_csv(
+    dimension: str = Query(..., pattern="^(product|category)$"),
+    value: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """Export all threads for a product or category as CSV."""
+    from fastapi.responses import Response
+    from .report_builder import build_dimension_csv
+
+    engine = DataEngine.get_instance()
+    df = engine.get_messages(start_date, end_date)
+    failures_df = engine.get_failures()
+    referrals_df = engine.get_referrals()
+
+    if start_date or end_date:
+        for frame_name in ("failures_df", "referrals_df"):
+            frame = failures_df if frame_name == "failures_df" else referrals_df
+            if frame is not None and not frame.empty and "fecha" in frame.columns:
+                mask = pd.Series(True, index=frame.index)
+                if start_date:
+                    mask &= frame["fecha"].astype(str) >= start_date
+                if end_date:
+                    mask &= frame["fecha"].astype(str) <= end_date
+                if frame_name == "failures_df":
+                    failures_df = frame[mask]
+                else:
+                    referrals_df = frame[mask]
+
+    # Use get_category_threads with the right filter
+    if dimension == "product":
+        # Find the product_macro for this product
+        hdf = df[df["type"] == "human"]
+        prod_rows = hdf[hdf.get("product_yaml", pd.Series()) == value] if "product_yaml" in hdf.columns else pd.DataFrame()
+        product_macro = ""
+        if not prod_rows.empty and "product_macro_yaml" in prod_rows.columns:
+            product_macro = str(prod_rows["product_macro_yaml"].mode().iloc[0])
+        threads_result = get_category_threads(
+            df, referrals_df, failures_df,
+            product_macro=product_macro, product=value,
+            page=1, limit=999999,
+        )
+    else:
+        threads_result = get_category_threads(
+            df, referrals_df, failures_df,
+            macro=value,
+            page=1, limit=999999,
+        )
+
+    csv_bytes = build_dimension_csv(threads_result.get("data", []))
+
+    dim_label = "producto" if dimension == "product" else "categoria"
+    safe_value = value.replace(" ", "_").replace("/", "-")
+    filename = f"conversaciones_{dim_label}_{safe_value}.csv"
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 

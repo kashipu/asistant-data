@@ -10,7 +10,8 @@ import { KpisPanel } from './components/KpisPanel';
 import { CategoriesDeepPanel } from './components/CategoriesDeepPanel';
 import { ProductsDeepPanel } from './components/ProductsDeepPanel';
 import { FailuresDeepPanel } from './components/FailuresDeepPanel';
-import { LayoutDashboard, Activity, Ban, SearchCode, Bookmark, RefreshCw, Loader2, DatabaseZap, CheckCircle2, XCircle, TrendingUp, Layers, Package, BugPlay, MessageSquare, FileDown } from 'lucide-react';
+import { DownloadsPanel } from './components/DownloadsPanel';
+import { LayoutDashboard, Activity, Ban, SearchCode, Bookmark, RefreshCw, Loader2, DatabaseZap, CheckCircle2, XCircle, TrendingUp, Layers, Package, BugPlay, MessageSquare, FileDown, Download } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -115,6 +116,8 @@ function App() {
         return <ProductsDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
       case 'failures-deep':
         return <FailuresDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
+      case 'downloads':
+        return <DownloadsPanel startDate={startDate} endDate={endDate} />;
       case 'feedbacks':
         return <ReviewPanel onNavigateToThread={navigateToThread} />;
       case 'faqs':
@@ -185,6 +188,13 @@ function App() {
             <BugPlay size={18} /> Fallos Profundo
           </button>
 
+          <button
+            onClick={() => setActiveTab('downloads')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'downloads' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <Download size={18} /> Descargas
+          </button>
+
           <div className="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Herramientas
           </div>
@@ -223,6 +233,7 @@ function App() {
                     {activeTab === 'categories-deep' && 'Categorías — Análisis Profundo'}
                     {activeTab === 'products-deep' && 'Productos — Análisis Profundo'}
                     {activeTab === 'failures-deep' && 'Fallos — Análisis Profundo'}
+                    {activeTab === 'downloads' && 'Descargas de Reportes'}
                     {activeTab === 'feedbacks' && 'Human In The Loop (Entrenamiento)'}
                     {activeTab === 'faqs' && 'Casos de Prueba Frecuentes'}
                     {activeTab === 'messages' && 'Explorador de Conversaciones'}

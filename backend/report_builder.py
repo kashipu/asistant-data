@@ -1608,3 +1608,229 @@ Desglose por macro de producto → producto con métricas de resultado y categor
 ---
 *Generado automáticamente por el endpoint /api/reports/export/markdown — {generated_at.strftime('%Y-%m-%d %H:%M')}*
 """
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Dimension Report (per-product or per-macro-category)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
+    """
+    Build a standalone Markdown report from the output of get_dimension_report().
+    """
+    dim_label = "Producto" if report["dimension"] == "product" else "Categoría"
+    value = report.get("value", "—")
+    parent = report.get("parent", "")
+    n = report.get("total_conversations", 0)
+    total_msgs = report.get("total_messages", 0)
+    kpis = report.get("kpis", {})
+    sentiments = report.get("sentiments", {})
+    top_items = report.get("top_items", [])
+    user_phrases = report.get("user_phrases", [])
+    user_questions = report.get("user_questions", [])
+    subcategories = report.get("subcategories", [])
+    unanswered_questions = report.get("unanswered_questions", [])
+    failures = report.get("failures_detail", {})
+    redirections = report.get("redirections", {})
+    utility = report.get("utility", {})
+    sample_threads = report.get("sample_threads", [])
+    underlying = report.get("underlying_intents", [])
+    advisor = report.get("advisor_escalation", {})
+
+    period_str = ""
+    if period:
+        period_str = f"**Período:** {period.get('start', 'N/A')} — {period.get('end', 'N/A')}"
+
+    parent_line = f"\n**Macro:** {parent}" if parent else ""
+
+    # --- Section 1: KPIs ---
+    kpi_rows = [
+        ["Total conversaciones", N(n)],
+        ["Total mensajes", N(total_msgs)],
+        ["Encuestados", f"{N(kpis.get('surveyed', 0))} ({kpis.get('surveyed_pct', 0):.1f}%)"],
+        ["Con errores IA", f"{N(kpis.get('failures', 0))} ({kpis.get('failure_pct', 0):.1f}%)"],
+        ["Redirigidos", f"{N(kpis.get('redirected', 0))} ({kpis.get('redirected_pct', 0):.1f}%)"],
+        ["Auto-servicio", f"{N(kpis.get('self_service', 0))} ({kpis.get('self_service_pct', 0):.1f}%)"],
+    ]
+    kpi_table = md_table(kpi_rows, ["Indicador", "Valor"])
+
+    # --- Section 2: What users ask ---
+    item_label = "Categorías" if report["dimension"] == "product" else "Productos"
+    item_rows = [
+        [it["name"], N(it["conversations"]), f"{it['pct']:.1f}%"]
+        for it in top_items
+    ]
+    items_table = md_table(item_rows, [item_label, "Conversaciones", "%"])
+
+    phrases_list = "\n".join(
+        f"- \"{p['phrase']}\" ({N(p['count'])} veces)"
+        for p in user_phrases
+    ) if user_phrases else "_Sin frases frecuentes._"
+
+    # --- Subcategories section ---
+    subcategories_section = ""
+    if subcategories:
+        sc_rows = [[sc["name"], N(sc["conversations"]), f"{sc['pct']:.1f}%"] for sc in subcategories]
+        subcategories_section = f"""
+### 2.2 Subcategorías
+
+{md_table(sc_rows, ['Subcategoría', 'Conversaciones', '%'])}
+"""
+
+    questions_block = ""
+    if user_questions:
+        q_rows = [[f"\"{q['phrase']}\"", N(q["count"])] for q in user_questions]
+        q_table = md_table(q_rows, ["Pregunta del usuario", "Veces"])
+        questions_block = f"""
+### 2.4 Preguntas reales de los usuarios
+
+> Estas son las frases **exactas** que escriben los usuarios. Permiten identificar los puntos de dolor,
+> errores de acceso, y necesidades no resueltas.
+
+{q_table}
+"""
+
+    underlying_section = ""
+    if underlying:
+        u_rows = [[u["category"], N(u["threads"]), f"{u['pct']:.1f}%"] for u in underlying]
+        underlying_section = f"\n### 2.5 Intenciones subyacentes\n\n{md_table(u_rows, ['Intención', 'Hilos', '%'])}"
+
+    # --- Section 3: Failures ---
+    fail_total = failures.get("total", 0)
+    fail_pct = failures.get("pct", 0)
+    by_criteria = failures.get("by_criteria", {})
+    criteria_table = dict_to_table(by_criteria, "Criterio", "Casos") if by_criteria else "_Sin fallos detectados._\n"
+
+    fail_examples = failures.get("examples", [])
+    examples_rows = [
+        [ex["thread_id"], ex.get("fecha", ""), trunc(ex.get("last_user_message", ""), 80),
+         trunc(ex.get("last_ai_message", ""), 80)]
+        for ex in fail_examples[:10]
+    ]
+    examples_table = md_table(examples_rows, ["Thread ID", "Fecha", "Último msg usuario", "Respuesta IA"]) if examples_rows else ""
+
+    # --- Unanswered questions section ---
+    unanswered_section = ""
+    if unanswered_questions:
+        uq_rows = [[f"\"{q['phrase']}\"", N(q["count"])] for q in unanswered_questions]
+        uq_table = md_table(uq_rows, ["Pregunta del usuario", "Veces"])
+        unanswered_section = f"""
+### 3.1 Preguntas que el bot no supo responder
+
+> Frases reales de usuarios en conversaciones donde el asistente falló.
+> Excluye mensajes de encuesta y retroalimentación.
+
+{uq_table}
+"""
+
+    # --- Section 4: Redirections ---
+    redir_total = redirections.get("total", 0)
+    redir_pct = redirections.get("pct", 0)
+    by_channel = redirections.get("by_channel", {})
+    channel_table = dict_to_table(by_channel, "Canal", "Conversaciones") if by_channel else "_Sin redirecciones._\n"
+
+    # --- Section 5: Utility ---
+    u_useful = utility.get("useful", 0)
+    u_not = utility.get("not_useful", 0)
+    u_no_survey = utility.get("no_survey", 0)
+    u_pct = utility.get("useful_pct", 0)
+
+    sent_total = sum(sentiments.values()) or 1
+    sent_rows = [
+        [s, N(c), f"{c / sent_total * 100:.1f}%"]
+        for s, c in sentiments.items()
+    ]
+    sent_table = md_table(sent_rows, ["Sentimiento", "Mensajes", "%"])
+
+    advisor_line = ""
+    if advisor.get("total", 0) > 0:
+        advisor_line = f"\n**Escalamiento a asesor:** {N(advisor['total'])} conversaciones ({advisor['pct']:.1f}%)\n"
+
+    # --- Section 6: Sample threads ---
+    thread_rows = [
+        [t["thread_id"], t.get("fecha", ""), trunc(t.get("first_message", ""), 80), t.get("sentiment", "")]
+        for t in sample_threads[:50]
+    ]
+    threads_table = md_table(thread_rows, ["Thread ID", "Fecha", "Primer mensaje", "Sentimiento"]) if thread_rows else "_Sin hilos._\n"
+
+    return f"""# Reporte: {dim_label} — {value}
+{parent_line}
+{period_str}
+**Total:** {N(n)} conversaciones · {N(total_msgs)} mensajes
+
+---
+
+## 1. Indicadores Generales
+
+{kpi_table}
+
+## 2. ¿Qué Preguntan los Usuarios?
+
+### 2.1 {item_label} principales
+
+{items_table}
+{subcategories_section}
+### 2.3 Frases más frecuentes
+
+{phrases_list}
+{questions_block}{underlying_section}
+
+## 3. ¿Qué No Puede Responder el Asistente?
+
+**Total fallos:** {N(fail_total)} ({fail_pct:.1f}% de las conversaciones)
+
+{criteria_table}
+
+{examples_table}
+{unanswered_section}
+
+## 4. Redirecciones
+
+**Total redirigidas:** {N(redir_total)} ({redir_pct:.1f}%)
+
+{channel_table}
+
+## 5. Percepción de Utilidad
+
+| Indicador | Valor |
+|---|---|
+| Me fue útil | {N(u_useful)} |
+| No me fue útil | {N(u_not)} |
+| Sin encuesta | {N(u_no_survey)} |
+| Índice de utilidad | {u_pct:.1f}% |
+
+{advisor_line}
+
+### Sentimiento
+
+{sent_table}
+
+## 6. Hilos de Referencia
+
+> Estos IDs permiten buscar las conversaciones completas en el Excel o en el Explorador de Mensajes.
+
+{threads_table}
+
+---
+*Reporte generado automáticamente.*
+"""
+
+
+def build_dimension_csv(threads: list[dict]) -> bytes:
+    """Convert thread dicts (from get_category_threads) to CSV bytes for Excel."""
+    import io
+    import csv
+
+    if not threads:
+        return b""
+
+    fieldnames = [
+        "thread_id", "fecha", "first_human_message", "product",
+        "sentiment", "message_count", "was_redirected", "redirect_channel",
+        "survey_result", "bot_failed", "failure_criteria", "intent_position",
+    ]
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(threads)
+    return buf.getvalue().encode("utf-8-sig")

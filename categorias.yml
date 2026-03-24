@@ -248,6 +248,27 @@ categorias:
   - deposito a termino
   - ^(?!.*libre).*inversion
   - invertir
+- nombre: Seguros y Pólizas
+  macro: Cuentas y Productos
+  descripcion: Consultas sobre seguros, pólizas, cobros, cancelaciones o contratación de seguros.
+  palabras_clave:
+  - seguro
+  - seguros
+  - seguro de vida
+  - seguro hogar
+  - seguro de viaje
+  - seguro vehiculo
+  - seguro mascotas
+  - seguro deudor
+  - seguro estabilidad
+  - cancelar seguro
+  - cancelar un seguro
+  - poliza
+  - aseguradora
+  - seguros alfa
+  - cobro de seguro
+  - cobro seguro
+  - seguro no solicitado
 - nombre: Productos y Cuentas General
   macro: Cuentas y Productos
   descripcion: Consultas generales sobre productos bancarios y cuentas.
@@ -321,11 +342,7 @@ categorias:
   - proteccion
   - protegida
   - protegido
-  - segura
-  - seguras
   - seguridad
-  - seguro
-  - seguros
   - confiable
   - confiables
   - confianza
@@ -391,13 +408,12 @@ categorias:
   - la aplicacion no funciona
 - nombre: Funcionalidades Bloqueadas
   macro: App y Canales
-  descripcion: Opciones de la app que no están disponibles o no dejan realizar acciones.
+  descripcion: Opciones, botones o funcionalidades de la app que no están disponibles, aparecen inhabilitadas o no dejan realizar acciones específicas.
   palabras_clave:
-  - deja hacer
-  - dejan
   - deshabilitada
   - deshabilitado
-  - no deja
+  - inhabilitada
+  - inhabilitado
   - no deja activar
   - no deja enviar
   - no deja hacer
@@ -405,12 +421,19 @@ categorias:
   - no deja transferir
   - no disponible
   - no esta disponible
-  - no me deja
   - no me deja hacer
-  - no me permite
-  - no permite
-  - no puedo
-  - bliqueos
+  - opcion no disponible
+  - boton no funciona
+  - no aparece la opcion
+  - no me aparece
+  - no aparece
+  - opcion deshabilitada
+  - funcionalidad no disponible
+  - no se puede hacer
+  - en gris
+  - sale gris
+  - no me habilita
+  - no habilita
 - nombre: Canales Digitales (App / Web)
   macro: App y Canales
   descripcion: Consultas o problemas con la aplicación móvil (Banca Móvil), el portal web (Banca Virtual) o canales digitales.
@@ -430,6 +453,26 @@ categorias:
   - pagina del banco
   - sitio web
   - web
+  - no carga la app
+  - no abre la app
+  - no me carga
+  - no abre
+  - no puedo entrar
+  - no puedo ingresar
+  - no me deja entrar
+  - no me deja ingresar
+  - pantalla en blanco
+  - error en la app
+  - actualizar app
+  - actualizar la app
+  - descargar app
+  - descargar la app
+  - instalar app
+  - no se actualiza
+  - se cierra la app
+  - se cierra sola
+  - no funciona la app
+  - no sirve la app
 - nombre: Canales Físicos y Asistidos
   macro: App y Canales
   descripcion: Oficinas, cajeros, corresponsales, atención en persona, WhatsApp, servilínea o asesores telefónicos.
@@ -602,32 +645,20 @@ categorias:
   - derecho de peticion
 - nombre: Evaluación General
   macro: Experiencia
-  descripcion: Evaluación general positiva o negativa sin especificar aspectos concretos.
-  min_len: 3
+  descripcion: Evaluación general positiva o negativa del servicio o la atención recibida.
+  min_len: 5
   palabras_clave:
   - amazing
   - amigable
   - bad
   - basura
-  - bien
-  - bienn
-  - bieno
-  - buen
-  - buena
-  - buenas
   - buenisima
   - buenisimo
-  - bueno
-  - buenos
   - calidad
   - chevere
-  - comodo
   - deficiente
-  - dificil
   - ecxelente
   - efectiva
-  - efectivo
-  - eficacia
   - eficaz
   - eficiencia
   - eficiente
@@ -636,10 +667,8 @@ categorias:
   - excelentes
   - excellent
   - exelente
-  - experiencia
   - genial
   - good
-  - gracias
   - great
   - horrible
   - inconveniente
@@ -647,21 +676,12 @@ categorias:
   - la mejor
   - lo mejor
   - magnifico
-  - mal
-  - mala
   - malisima
   - malisimo
-  - malo
   - maravillosa
   - maravilloso
   - me gusta mucho
   - me gusto
-  - mejor
-  - mejora
-  - mejorar
-  - mejores
-  - mil gracias
-  - muchas gracias
   - muy bien
   - muy buena
   - muy bueno
@@ -670,65 +690,56 @@ categorias:
   - muy malo
   - nice
   - no me gusto
-  - normal
   - perfecta
   - perfecto
   - pesima
   - pesimo
-  - positiva
-  - positivo
-  - practico
   - que mal
-  - regular
   - satisfecha
   - satisfecho
-  - servicio
-  - servicios
   - sin ningun inconveniente
-  - sin ningun
-  - super
   - terrible
   - todo bien
   - todo en orden
   - todo ok
-  - util
   - very good
+  - mala experiencia
+  - buena experiencia
+  - mala atencion
+  - buena atencion
+  - pesimo servicio
+  - excelente servicio
+  - mal servicio
+  - buen servicio
 - nombre: Usabilidad / UX
   macro: Experiencia
   descripcion: Percepción sobre facilidad de uso, rapidez, diseño o interfaz de la app.
   min_len: 5
   palabras_clave:
-  - acceder
-  - acceso
   - agil
   - agilidad
-  - claro
-  - claros
   - complicaciones
   - complicada
   - complicado
   - confusa
   - confuso
   - dificil usar
+  - dificil de usar
   - diseno
   - entendible
   - es rapida
   - es rapido
   - facil
   - facil acceso
+  - facil de usar
   - facil usar
   - facilidad
-  - facilidades
   - facilita
   - facil y rapida
   - facil y rapido
-  - inmediata
-  - inmediato
   - interfaz
   - intuitiva
   - intuitivo
-  - manejar
-  - manejo
   - muy complicada
   - muy complicado
   - muy facil
@@ -740,21 +751,17 @@ categorias:
   - no es claro
   - poco clara
   - poco claro
-  - rapida
-  - rapidez
-  - rapido
   - sencilla
-  - sencillez
   - sencillo
   - simple
   - super facil
-  - tramite
-  - tramites
-  - usar
-  - usarla
-  - uso
+  - app lenta
+  - app rapida
+  - demora mucho
+  - tarda mucho
+  - muy lenta
+  - muy lento
   - velocidad
-  - veloz
 - nombre: Recomendación del Banco
   macro: Experiencia
   descripcion: Comentarios sobre si recomendaría o no el banco o la app.

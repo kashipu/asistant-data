@@ -832,3 +832,227 @@ def get_products_detailed(df: pd.DataFrame,
         })
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Dimension Report (per-product or per-macro-category)
+# ---------------------------------------------------------------------------
+
+def get_dimension_report(df: pd.DataFrame,
+                         referrals_df: pd.DataFrame = None,
+                         failures_df: pd.DataFrame = None,
+                         dimension: str = "product",
+                         value: str = "") -> dict:
+    """
+    Build a comprehensive report for a single product (product_yaml) or
+    macro-category (macro_yaml).
+
+    dimension: "product" | "category"
+    value: the specific product name or macro category name
+    """
+    if df is None or df.empty or not value:
+        return {"dimension": dimension, "value": value, "total_conversations": 0}
+
+    hdf = df[df["type"] == "human"].copy()
+    if hdf.empty:
+        return {"dimension": dimension, "value": value, "total_conversations": 0}
+
+    # --- Filter by dimension ---
+    if dimension == "product":
+        filter_col = "product_yaml"
+        breakdown_col = "categoria_yaml"
+        parent_col = "product_macro_yaml"
+        skip_breakdown = {"Encuesta", "Saludos", "Sin Sentido", "Retroalimentación", "Sin Clasificar"}
+    else:
+        filter_col = "macro_yaml"
+        breakdown_col = "product_yaml"
+        parent_col = None
+        skip_breakdown = SKIP_PRODUCTS
+
+    if filter_col not in hdf.columns:
+        return {"dimension": dimension, "value": value, "total_conversations": 0}
+
+    filtered = hdf[hdf[filter_col] == value]
+    if filtered.empty:
+        return {"dimension": dimension, "value": value, "total_conversations": 0}
+
+    dim_threads = set(filtered["thread_id"].unique())
+    n = len(dim_threads)
+    total_msgs = int(df[df["thread_id"].isin(dim_threads)].shape[0])
+
+    # Parent (product_macro for products)
+    parent = ""
+    if parent_col and parent_col in filtered.columns:
+        parent = str(filtered[parent_col].mode().iloc[0]) if not filtered[parent_col].isna().all() else ""
+
+    # --- Pre-compute outcome sets ---
+    hdf = hdf.sort_index()
+    hdf["msg_pos"] = hdf.groupby("thread_id").cumcount()
+
+    referral_threads = set(referrals_df["thread_id"]) if referrals_df is not None and not referrals_df.empty else set()
+    referral_channel_map = _build_referral_channel_map(referrals_df)
+    failure_threads = set(failures_df["thread_id"]) if failures_df is not None and not failures_df.empty else set()
+    failure_criteria_map = (
+        failures_df.set_index("thread_id")["criteria"].to_dict()
+        if failures_df is not None and not failures_df.empty and "criteria" in failures_df.columns
+        else {}
+    )
+    survey_useful, survey_not_useful = _compute_survey_sets(df)
+
+    # --- KPIs ---
+    surveyed_threads = dim_threads & (survey_useful | survey_not_useful)
+    failed_threads = dim_threads & failure_threads
+    redirected_threads = dim_threads & referral_threads
+    self_service_threads = dim_threads - redirected_threads
+
+    kpis = {
+        "surveyed": len(surveyed_threads),
+        "surveyed_pct": round(len(surveyed_threads) / n * 100, 1) if n else 0.0,
+        "failures": len(failed_threads),
+        "failure_pct": round(len(failed_threads) / n * 100, 1) if n else 0.0,
+        "redirected": len(redirected_threads),
+        "redirected_pct": round(len(redirected_threads) / n * 100, 1) if n else 0.0,
+        "self_service": len(self_service_threads),
+        "self_service_pct": round(len(self_service_threads) / n * 100, 1) if n else 0.0,
+    }
+
+    # --- Breakdown (categories if product, products if category) ---
+    if breakdown_col in filtered.columns:
+        bd_data = filtered[
+            filtered[breakdown_col].notna() & (~filtered[breakdown_col].isin(skip_breakdown))
+        ]
+        bd_counts = (
+            bd_data.groupby(breakdown_col)["thread_id"]
+            .nunique()
+            .sort_values(ascending=False)
+            .head(15)
+        )
+        top_items = [
+            {"name": str(name), "conversations": int(cnt),
+             "pct": round(cnt / n * 100, 1) if n else 0.0}
+            for name, cnt in bd_counts.items()
+        ]
+    else:
+        top_items = []
+
+    # --- Sentiments ---
+    sent_counts = {"positivo": 0, "neutral": 0, "negativo": 0}
+    if "sentiment" in filtered.columns:
+        for s, cnt in filtered["sentiment"].value_counts().items():
+            if s in sent_counts:
+                sent_counts[s] = int(cnt)
+
+    # --- User phrases ---
+    from .faqs import _is_noise
+    phrase_df = filtered[filtered["text"].str.strip().str.len() >= 4]
+    phrase_df = phrase_df[~phrase_df["text"].apply(_is_noise)]
+    phrase_text = phrase_df["text"].str.strip()
+    phrase_counts = phrase_text.value_counts().head(10)
+    user_phrases = [{"phrase": str(p), "count": int(c)} for p, c in phrase_counts.items()]
+
+    # --- Real user questions (longer phrases showing actual pain points) ---
+    questions_df = phrase_df[phrase_df["text"].str.strip().str.split().str.len() >= 4]
+    question_counts = questions_df["text"].str.strip().value_counts().head(15)
+    user_questions = [{"phrase": str(p), "count": int(c)} for p, c in question_counts.items()]
+
+    # --- Subcategories breakdown (only for category dimension) ---
+    subcategories_breakdown = []
+    if dimension == "category" and "categoria_yaml" in filtered.columns:
+        skip_subs = {"Encuesta", "Saludos", "Sin Sentido", "Retroalimentación", "Sin Clasificar"}
+        sub_data = filtered[
+            filtered["categoria_yaml"].notna() & (~filtered["categoria_yaml"].isin(skip_subs))
+        ]
+        sub_counts = (
+            sub_data.groupby("categoria_yaml")["thread_id"]
+            .nunique()
+            .sort_values(ascending=False)
+        )
+        subcategories_breakdown = [
+            {"name": str(name), "conversations": int(cnt),
+             "pct": round(cnt / n * 100, 1) if n else 0.0}
+            for name, cnt in sub_counts.items()
+        ]
+
+    # --- Unanswered user questions (from failed threads, no survey/feedback noise) ---
+    unanswered_questions = []
+    if failures_df is not None and not failures_df.empty:
+        dim_fail_threads = dim_threads & failure_threads
+        fail_msgs = filtered[filtered["thread_id"].isin(dim_fail_threads)].copy()
+        fail_msgs = fail_msgs[fail_msgs["text"].str.strip().str.len() >= 4]
+        fail_msgs = fail_msgs[~fail_msgs["text"].str.startswith("[survey]", na=False)]
+        fail_msgs = fail_msgs[~fail_msgs["text"].apply(_is_noise)]
+        fail_msgs = fail_msgs[fail_msgs["text"].str.strip().str.split().str.len() >= 3]
+        fail_phrase_counts = fail_msgs["text"].str.strip().value_counts().head(50)
+        unanswered_questions = [
+            {"phrase": str(p), "count": int(c)} for p, c in fail_phrase_counts.items()
+        ]
+
+    # --- Outcome metrics via _enrich_subcategory ---
+    outcomes = _enrich_subcategory(
+        value, dim_threads, hdf,
+        referral_threads, referral_channel_map,
+        failure_threads, failure_criteria_map,
+        survey_useful, survey_not_useful,
+        filter_col=filter_col,
+    )
+
+    # --- Failures detail ---
+    failure_examples = []
+    if failures_df is not None and not failures_df.empty:
+        dim_failures = failures_df[failures_df["thread_id"].isin(dim_threads)]
+        for _, row in dim_failures.sort_values("fecha", ascending=False).head(15).iterrows():
+            fecha = row.get("fecha", "")
+            if pd.notna(fecha) and hasattr(fecha, "strftime"):
+                fecha = fecha.strftime("%Y-%m-%d")
+            else:
+                fecha = str(fecha)[:10] if pd.notna(fecha) else ""
+            failure_examples.append({
+                "thread_id": str(row.get("thread_id", "")),
+                "fecha": fecha,
+                "last_user_message": str(row.get("last_user_message", ""))[:200],
+                "last_ai_message": str(row.get("last_ai_message", ""))[:200],
+                "criteria": str(row.get("criteria", "")),
+            })
+
+    # --- Sample threads (most recent 50) ---
+    sample_data = filtered.sort_values("fecha", ascending=False).drop_duplicates("thread_id").head(50)
+    sample_threads = []
+    for _, row in sample_data.iterrows():
+        fecha = row.get("fecha", "")
+        if pd.notna(fecha) and hasattr(fecha, "strftime"):
+            fecha = fecha.strftime("%Y-%m-%d")
+        else:
+            fecha = str(fecha)[:10] if pd.notna(fecha) else ""
+        sample_threads.append({
+            "thread_id": str(row["thread_id"]),
+            "fecha": fecha,
+            "first_message": str(row.get("text", ""))[:200],
+            "sentiment": str(row.get("sentiment", "neutral")),
+        })
+
+    return {
+        "dimension": dimension,
+        "value": value,
+        "parent": parent,
+        "total_conversations": n,
+        "total_messages": total_msgs,
+        "kpis": kpis,
+        "sentiments": sent_counts,
+        "top_items": top_items,
+        "user_phrases": user_phrases,
+        "user_questions": user_questions,
+        "subcategories": subcategories_breakdown,
+        "unanswered_questions": unanswered_questions,
+        "failures_detail": {
+            "total": outcomes["bot_failures"]["total"],
+            "pct": outcomes["bot_failures"]["pct"],
+            "by_criteria": outcomes["bot_failures"]["by_criteria"],
+            "examples": failure_examples,
+        },
+        "redirections": outcomes["redirections"],
+        "utility": outcomes["utility"],
+        "intent_position": outcomes["intent_position"],
+        "advisor_escalation": outcomes["advisor_escalation"],
+        "underlying_intents": outcomes.get("underlying_intents", []),
+        "sample_threads": sample_threads,
+    }

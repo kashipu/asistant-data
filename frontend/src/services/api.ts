@@ -87,4 +87,36 @@ export const api = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+  downloadDimensionMarkdown: async (dimension: 'product' | 'category', value: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ dimension, value });
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    const response = await axios.get(`${API_URL}/reports/dimension-report/export/markdown?${params}`, { responseType: 'blob' });
+    const dimLabel = dimension === 'product' ? 'producto' : 'categoria';
+    const safeValue = value.replace(/ /g, '_').replace(/\//g, '-');
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'text/markdown' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_${dimLabel}_${safeValue}_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  downloadDimensionCsv: async (dimension: 'product' | 'category', value: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ dimension, value });
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    const response = await axios.get(`${API_URL}/reports/dimension-report/export/csv?${params}`, { responseType: 'blob' });
+    const dimLabel = dimension === 'product' ? 'producto' : 'categoria';
+    const safeValue = value.replace(/ /g, '_').replace(/\//g, '-');
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `conversaciones_${dimLabel}_${safeValue}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
