@@ -11,7 +11,8 @@ import { CategoriesDeepPanel } from './components/CategoriesDeepPanel';
 import { ProductsDeepPanel } from './components/ProductsDeepPanel';
 import { FailuresDeepPanel } from './components/FailuresDeepPanel';
 import { DownloadsPanel } from './components/DownloadsPanel';
-import { LayoutDashboard, Activity, Ban, SearchCode, Bookmark, RefreshCw, Loader2, DatabaseZap, CheckCircle2, XCircle, TrendingUp, Layers, Package, BugPlay, MessageSquare, FileDown, Download } from 'lucide-react';
+import { AdvisorPanel } from './components/AdvisorPanel';
+import { LayoutDashboard, Activity, Ban, SearchCode, Bookmark, RefreshCw, Loader2, DatabaseZap, CheckCircle2, XCircle, TrendingUp, Layers, Package, BugPlay, MessageSquare, FileDown, Download, UserCheck } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -116,6 +117,8 @@ function App() {
         return <ProductsDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
       case 'failures-deep':
         return <FailuresDeepPanel onNavigateToThread={navigateToThread} startDate={startDate} endDate={endDate} />;
+      case 'advisor-escalation':
+        return <AdvisorPanel startDate={startDate} endDate={endDate} />;
       case 'downloads':
         return <DownloadsPanel startDate={startDate} endDate={endDate} />;
       case 'feedbacks':
@@ -189,6 +192,13 @@ function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('advisor-escalation')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'advisor-escalation' ? 'bg-violet-50 text-violet-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <UserCheck size={18} /> Escalamiento a Asesor
+          </button>
+
+          <button
             onClick={() => setActiveTab('downloads')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'downloads' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}
           >
@@ -233,6 +243,7 @@ function App() {
                     {activeTab === 'categories-deep' && 'Categorías — Análisis Profundo'}
                     {activeTab === 'products-deep' && 'Productos — Análisis Profundo'}
                     {activeTab === 'failures-deep' && 'Fallos — Análisis Profundo'}
+                    {activeTab === 'advisor-escalation' && 'Escalamiento a Asesor'}
                     {activeTab === 'downloads' && 'Descargas de Reportes'}
                     {activeTab === 'feedbacks' && 'Human In The Loop (Entrenamiento)'}
                     {activeTab === 'faqs' && 'Casos de Prueba Frecuentes'}

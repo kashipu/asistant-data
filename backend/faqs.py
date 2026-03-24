@@ -46,6 +46,35 @@ def _is_noise(text: str) -> bool:
     return all(t in _NOISE_TOKENS for t in tokens)
 
 
+# Patterns that indicate a system/prompt message leaked into user messages
+_SYSTEM_PATTERNS = [
+    "cambia completamente tu respuesta",
+    "recuerda solo responder con el nuevo mensaje",
+    "ninguna referencia a este mensaje debe estar incluida",
+    "no se puede agregar una respuesta",
+    "el contenido del mensaje de ia",
+    "mensaje pendiente previo",
+]
+
+
+def _is_system_or_survey(text: str) -> bool:
+    """Returns True if the text is a survey message, system prompt leak, or noise."""
+    if not isinstance(text, str):
+        return True
+    t = text.strip()
+    if not t or len(t) < 4:
+        return True
+    tl = t.lower()
+    # Survey messages
+    if tl.startswith("[survey]"):
+        return True
+    # System/prompt leak
+    for pat in _SYSTEM_PATTERNS:
+        if pat in tl:
+            return True
+    return False
+
+
 def get_faqs_by_category(df: pd.DataFrame, top_n: int = 5):
     """
     Returns the most frequent exact human phrases per subcategory, grouped by macro.

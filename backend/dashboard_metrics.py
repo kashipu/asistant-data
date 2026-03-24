@@ -107,6 +107,23 @@ def get_extended_funnel(df: pd.DataFrame, start_date: str = None, end_date: str 
                     criteria_counts[crit] = criteria_counts.get(crit, 0) + 1
 
     # ---------------------------------------------------------------
+    # ADVISOR ESCALATION
+    # ---------------------------------------------------------------
+    arrived_seeking_advisor = set()
+    if 'categoria_yaml' in human_df.columns:
+        esc_df = human_df[human_df['categoria_yaml'] == 'Escalamiento a Asesor']
+        arrived_seeking_advisor = set(esc_df['thread_id'].unique())
+    total_arrived_seeking = len(arrived_seeking_advisor)
+
+    # Organic escalation: redirected but didn't arrive seeking advisor
+    organic_escalation = ref_threads - arrived_seeking_advisor
+    total_organic = len(organic_escalation)
+
+    # Bot failed then redirected (excluding those who arrived seeking)
+    bot_failed_redirected = (failed_threads & ref_threads) - arrived_seeking_advisor
+    total_bot_failed_redirected = len(bot_failed_redirected)
+
+    # ---------------------------------------------------------------
     # PRODUCT vs GENERAL (among active)
     # ---------------------------------------------------------------
     product_thread_ids: set = set()
@@ -299,6 +316,29 @@ def get_extended_funnel(df: pd.DataFrame, start_date: str = None, end_date: str 
             "base_label": f"de activas ({total_active:,})",
             "explanation": "Conversaciones activas sin producto específico identificado. Incluye consultas generales, saludos extendidos, o temas no relacionados a productos.",
             "color": "gray",
+        },
+        {
+            "id": "arrived_seeking_advisor",
+            "label": "Llegaron Buscando Asesor",
+            "count": total_arrived_seeking,
+            "pct": pct(total_arrived_seeking, total_threads),
+            "base_label": f"de total ({total_threads:,})",
+            "explanation": "Usuarios cuya primera intención fue hablar con un asesor humano — no intentaron autoservicio.",
+            "color": "violet",
+        },
+        {
+            "id": "organic_escalation",
+            "label": "Terminaron Pidiendo Asesor",
+            "count": total_organic,
+            "pct": pct(total_organic, total_threads),
+            "base_label": f"de total ({total_threads:,})",
+            "explanation": "No buscaban asesor pero terminaron siendo redirigidos — indica que el bot no resolvió su consulta.",
+            "color": "orange",
+            "correlation": {
+                "label": "de estos el bot falló primero",
+                "count": total_bot_failed_redirected,
+                "pct": pct(total_bot_failed_redirected, total_organic) if total_organic else 0,
+            },
         },
     ]
 

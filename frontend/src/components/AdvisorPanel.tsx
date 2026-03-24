@@ -1,81 +1,76 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { Loader2, AlertCircle, UserCheck, Clock, History, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { Loader2, AlertCircle, UserCheck, PhoneForwarded, BugPlay, TrendingUp, Users, Headphones } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
 
-interface AdvisorRequest {
-  thread_id: string;
-  date: string;
-  sample_text: string;
-  msg_count: number;
-  request_type: string;
-}
-
-interface Stats {
-  total: number;
-  immediate: number;
-  after_effort: number;
+interface EscalationData {
+  total_conversations: number;
+  arrived_seeking_advisor: number;
+  arrived_seeking_pct: number;
+  total_redirected: number;
+  total_redirected_pct: number;
+  by_channel: Record<string, number>;
+  arrived_and_redirected: number;
+  organic_escalation: number;
+  organic_escalation_pct: number;
+  bot_failed_then_redirected: number;
+  bot_failed_then_redirected_pct: number;
+  top_categories_organic: { name: string; conversations: number; pct: number }[];
+  top_subcategories_organic: { name: string; conversations: number; pct: number }[];
 }
 
 interface AdvisorPanelProps {
-  onNavigateToThread?: (threadId: string) => void;
   startDate?: string;
   endDate?: string;
 }
 
-export function AdvisorPanel({ onNavigateToThread, startDate, endDate }: AdvisorPanelProps) {
-  const [data, setData] = useState<AdvisorRequest[]>([]);
+const N = (n: number) => n.toLocaleString('es-CO');
+
+const channelLabels: Record<string, string> = {
+  digital: 'Canal Digital',
+  serviline: 'Servilinea',
+  office: 'Oficina',
+};
+
+const channelColors: Record<string, string> = {
+  digital: 'bg-blue-500',
+  serviline: 'bg-violet-500',
+  office: 'bg-amber-500',
+};
+
+export function AdvisorPanel({ startDate, endDate }: AdvisorPanelProps) {
+  const [data, setData] = useState<EscalationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats>({ total: 0, immediate: 0, after_effort: 0 });
-  
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [limit] = useState(20);
-  
-  // Sorting
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const result = await api.getAdvisors(startDate, endDate);
-        setData(result.data);
-        setStats(result.stats);
-      } catch (error) {
-        console.error("Failed to load advisor data:", error);
-        setError("Error cargando datos de asesores.");
+        const result = await api.getAdvisorEscalation(startDate, endDate);
+        setData(result);
+      } catch (_err) {
+        setError("Error cargando datos de escalamiento.");
       } finally {
         setLoading(false);
       }
     };
-    loadData();
+    load();
   }, [startDate, endDate]);
 
-  const handleSort = (key: string) => {
-      let direction: 'asc' | 'desc' = 'asc';
-      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-          direction = 'desc';
-      }
-      setSortConfig({ key, direction });
-  };
+  if (loading) {
+    return (
+      <div className="p-12 text-center text-gray-400">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
+        Cargando metricas de escalamiento...
+      </div>
+    );
+  }
 
-  const sortedData = [...data].sort((a, b) => {
-      if (!sortConfig) return 0;
-      const aVal = (a as unknown as Record<string, string | number>)[sortConfig.key] || '';
-      const bVal = (b as unknown as Record<string, string | number>)[sortConfig.key] || '';
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-  });
-
-  // Client-side pagination since API returns all for now (implied by previous pattern, 
-  // though typically we should paginate on backend if large. 
-  // Given current backend implementation returns all, we slice here.)
-  const totalPages = Math.ceil(sortedData.length / limit);
-  const paginatedData = sortedData.slice((page - 1) * limit, page * limit);
-
-  if (error) {
+  if (error || !data) {
     return (
       <div className="p-8 text-center text-red-500">
         <AlertCircle size={32} className="mx-auto mb-2" />
@@ -84,145 +79,224 @@ export function AdvisorPanel({ onNavigateToThread, startDate, endDate }: Advisor
     );
   }
 
+  const totalRedirected = data.total_redirected;
+  const channelEntries = Object.entries(data.by_channel).sort(([, a], [, b]) => b - a);
+
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-              <UserCheck className="w-6 h-6" />
+      {/* Main KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-violet-500">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Llegaron buscando asesor</p>
+                <h3 className="text-3xl font-bold text-gray-900 mt-1">{N(data.arrived_seeking_advisor)}</h3>
+                <p className="text-sm text-violet-600 font-medium mt-1">{data.arrived_seeking_pct}% del total</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-violet-100 text-violet-600">
+                <UserCheck className="w-5 h-5" />
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Solicitudes</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stats.total.toLocaleString()}</h3>
-            </div>
-          </div>
+            <p className="text-[11px] text-gray-400 mt-3">Su primera intencion fue hablar con un asesor humano</p>
+          </CardContent>
+        </Card>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-             <div className="p-3 rounded-full bg-red-100 text-red-600">
-              <Clock className="w-6 h-6" />
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Terminaron redirigidos</p>
+                <h3 className="text-3xl font-bold text-gray-900 mt-1">{N(data.total_redirected)}</h3>
+                <p className="text-sm text-blue-600 font-medium mt-1">{data.total_redirected_pct}% del total</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600">
+                <PhoneForwarded className="w-5 h-5" />
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">De Inmediato</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stats.immediate.toLocaleString()}</h3>
-              <p className="text-xs text-gray-400">Primeros 2 mensajes</p>
-            </div>
-          </div>
+            <p className="text-[11px] text-gray-400 mt-3">Fueron derivados a algun canal de atencion</p>
+          </CardContent>
+        </Card>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-             <div className="p-3 rounded-full bg-green-100 text-green-600">
-              <History className="w-6 h-6" />
+        <Card className="border-l-4 border-l-orange-500">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Bot fallo y redirigidos</p>
+                <h3 className="text-3xl font-bold text-gray-900 mt-1">{N(data.bot_failed_then_redirected)}</h3>
+                <p className="text-sm text-orange-600 font-medium mt-1">{data.bot_failed_then_redirected_pct}% del total</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-orange-100 text-orange-600">
+                <BugPlay className="w-5 h-5" />
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Luego de Intentar</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stats.after_effort.toLocaleString()}</h3>
-              <p className="text-xs text-gray-400">Despues de interactuar</p>
+            <p className="text-[11px] text-gray-400 mt-3">El bot no resolvio y el usuario fue derivado</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-teal-500">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Escalamiento organico</p>
+                <h3 className="text-3xl font-bold text-gray-900 mt-1">{N(data.organic_escalation)}</h3>
+                <p className="text-sm text-teal-600 font-medium mt-1">{data.organic_escalation_pct}% del total</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-teal-100 text-teal-600">
+                <TrendingUp className="w-5 h-5" />
+              </div>
             </div>
-          </div>
+            <p className="text-[11px] text-gray-400 mt-3">No buscaban asesor pero terminaron siendo redirigidos</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('thread_id')}>
-                    <div className="flex items-center gap-1">ID Conversación <ArrowUpDown size={12} /></div>
-                </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date')}>
-                    <div className="flex items-center gap-1">Fecha <ArrowUpDown size={12} /></div>
-                </th>
-                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('request_type')}>
-                    <div className="flex items-center gap-1">Tipo <ArrowUpDown size={12} /></div>
-                </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sample_text')}>
-                    <div className="flex items-center gap-1">Mensaje <ArrowUpDown size={12} /></div>
-                </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('msg_count')}>
-                    <div className="flex items-center gap-1">Total Msgs <ArrowUpDown size={12} /></div>
-                </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
+      {/* Funnel visual */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Users className="w-4 h-4 text-gray-500" />
+            Embudo de Escalamiento
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Total */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">Total conversaciones</span>
+                <span className="font-semibold">{N(data.total_conversations)}</span>
+              </div>
+              <Progress value={100} className="h-3" indicatorClassName="bg-gray-300" />
+            </div>
+            {/* Redirected */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">Redirigidos a algun canal</span>
+                <span className="font-semibold">{N(data.total_redirected)} <span className="text-gray-400 font-normal">({data.total_redirected_pct}%)</span></span>
+              </div>
+              <Progress value={data.total_redirected_pct} className="h-3" indicatorClassName="bg-blue-400" />
+            </div>
+            {/* Organic */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">No buscaban asesor pero fueron redirigidos</span>
+                <span className="font-semibold">{N(data.organic_escalation)} <span className="text-gray-400 font-normal">({data.organic_escalation_pct}%)</span></span>
+              </div>
+              <Progress value={data.organic_escalation_pct} className="h-3" indicatorClassName="bg-teal-400" />
+            </div>
+            {/* Arrived seeking */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">Llegaron buscando asesor directamente</span>
+                <span className="font-semibold">{N(data.arrived_seeking_advisor)} <span className="text-gray-400 font-normal">({data.arrived_seeking_pct}%)</span></span>
+              </div>
+              <Progress value={data.arrived_seeking_pct} className="h-3" indicatorClassName="bg-violet-400" />
+            </div>
+            {/* Bot failed */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">Bot fallo y fueron redirigidos</span>
+                <span className="font-semibold">{N(data.bot_failed_then_redirected)} <span className="text-gray-400 font-normal">({data.bot_failed_then_redirected_pct}%)</span></span>
+              </div>
+              <Progress value={data.bot_failed_then_redirected_pct} className="h-3" indicatorClassName="bg-orange-400" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Two-column: channels + categories */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Channels */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Headphones className="w-4 h-4 text-gray-500" />
+              Canales de Redireccion
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {channelEntries.map(([channel, count]) => (
+                <div key={channel}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-700 font-medium">{channelLabels[channel] || channel}</span>
+                    <span className="text-gray-500">{N(count)} <span className="text-gray-400">({totalRedirected ? ((count / totalRedirected) * 100).toFixed(1) : 0}%)</span></span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full ${channelColors[channel] || 'bg-gray-400'}`}
+                      style={{ width: `${totalRedirected ? (count / totalRedirected) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top categories that ended requesting (organic) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">
+              De que hablaban los que terminaron pidiendo asesor?
+            </CardTitle>
+            <p className="text-xs text-gray-400 mt-1">Categorias de usuarios que no buscaban asesor pero fueron redirigidos</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.top_categories_organic.map((cat, i) => (
+                <div key={cat.name} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-4 text-right">{i + 1}</span>
+                    <span className="text-sm text-gray-700">{cat.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900">{N(cat.conversations)}</span>
+                    <Badge variant="outline" className="text-[10px]">{cat.pct}%</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Subcategories detail */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">
+            Subcategorias con mayor escalamiento organico
+          </CardTitle>
+          <p className="text-xs text-gray-400 mt-1">Temas especificos donde el bot no logro resolver y el usuario fue derivado</p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                    Cargando...
-                  </td>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">Subcategoria</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Conversaciones</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% del organico</th>
                 </tr>
-              ) : paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                     No se encontraron solicitudes de asesor.
-                  </td>
-                </tr>
-              ) : (
-                paginatedData.map((row) => (
-                  <tr key={row.thread_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-mono text-gray-600 whitespace-nowrap">
-                        <span className="cursor-pointer border-b border-dotted border-gray-400 hover:text-blue-600" onClick={() => navigator.clipboard.writeText(row.thread_id)} title="Copiar ID">
-                            {row.thread_id}
-                        </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                      {row.date}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          row.request_type === 'Inmediato' 
-                          ? 'bg-red-100 text-red-700' 
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                          {row.request_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-800 max-w-md truncate" title={row.sample_text}>
-                      {row.sample_text}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 text-center">
-                      {row.msg_count}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => onNavigateToThread && onNavigateToThread(row.thread_id)}
-                        className="text-blue-600 hover:text-blue-800 font-medium text-xs"
-                      >
-                        Ver
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.top_subcategories_organic.map((sub, i) => (
+                  <tr key={sub.name} className="hover:bg-gray-50">
+                    <td className="px-4 py-2.5 text-xs text-gray-400">{i + 1}</td>
+                    <td className="px-4 py-2.5 text-sm text-gray-700">{sub.name}</td>
+                    <td className="px-4 py-2.5 text-sm font-medium text-gray-900 text-right">{N(sub.conversations)}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Badge variant={sub.pct > 10 ? "warning" : "outline"} className="text-[10px]">{sub.pct}%</Badge>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-           <span className="text-sm text-gray-500">
-              Página {page} de {totalPages} ({sortedData.length} total)
-           </span>
-           <div className="flex gap-2">
-             <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-               <ArrowLeft size={16} />
-             </button>
-             <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-               <ArrowRight size={16} />
-             </button>
-           </div>
-        </div>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

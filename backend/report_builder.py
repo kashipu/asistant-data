@@ -1667,14 +1667,41 @@ def build_dimension_report_md(report: dict, period: dict | None = None) -> str:
         for p in user_phrases
     ) if user_phrases else "_Sin frases frecuentes._"
 
-    # --- Subcategories section ---
+    # --- Subcategories section (summary + detail per subcategory) ---
     subcategories_section = ""
     if subcategories:
-        sc_rows = [[sc["name"], N(sc["conversations"]), f"{sc['pct']:.1f}%"] for sc in subcategories]
+        sc_rows = [
+            [sc["name"], N(sc["conversations"]), f"{sc['pct']:.1f}%",
+             N(sc.get("failures", 0)), f"{sc.get('failure_pct', 0):.1f}%"]
+            for sc in subcategories
+        ]
+        sc_summary = md_table(sc_rows, ["Subcategoría", "Conversaciones", "%", "Fallos", "% Fallos"])
+
+        sc_details = ""
+        for sc in subcategories:
+            sc_name = sc["name"]
+            sc_detail = f"\n#### {sc_name}\n\n"
+            sc_detail += f"**{N(sc['conversations'])}** conversaciones ({sc['pct']:.1f}%) · **{N(sc.get('failures', 0))}** fallos ({sc.get('failure_pct', 0):.1f}%)\n"
+
+            # User questions
+            sc_qs = sc.get("user_questions", [])
+            if sc_qs:
+                sc_q_rows = [[f"\"{q['phrase']}\"", N(q["count"])] for q in sc_qs]
+                sc_detail += f"\n**Preguntas frecuentes:**\n\n{md_table(sc_q_rows, ['Pregunta', 'Veces'])}\n"
+
+            # Unanswered questions
+            sc_unanswered = sc.get("unanswered_questions", [])
+            if sc_unanswered:
+                sc_ua_rows = [[f"\"{q['phrase']}\"", N(q["count"])] for q in sc_unanswered]
+                sc_detail += f"\n**Preguntas sin respuesta:**\n\n{md_table(sc_ua_rows, ['Pregunta', 'Veces'])}\n"
+
+            sc_details += sc_detail
+
         subcategories_section = f"""
 ### 2.2 Subcategorías
 
-{md_table(sc_rows, ['Subcategoría', 'Conversaciones', '%'])}
+{sc_summary}
+{sc_details}
 """
 
     questions_block = ""

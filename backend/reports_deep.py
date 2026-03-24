@@ -793,8 +793,9 @@ def get_products_detailed(df: pd.DataFrame,
 
             # User phrases — top 5 most frequent human messages for this product
             phrase_df = prod_hdf[prod_hdf["text"].str.strip().str.len() >= 4]
-            from .faqs import _is_noise
+            from .faqs import _is_noise, _is_system_or_survey
             phrase_df = phrase_df[~phrase_df["text"].apply(_is_noise)]
+            phrase_df = phrase_df[~phrase_df["text"].apply(_is_system_or_survey)]
             phrase_counts = (
                 phrase_df["text"].str.strip()
                 .value_counts()
@@ -943,9 +944,10 @@ def get_dimension_report(df: pd.DataFrame,
                 sent_counts[s] = int(cnt)
 
     # --- User phrases ---
-    from .faqs import _is_noise
+    from .faqs import _is_noise, _is_system_or_survey
     phrase_df = filtered[filtered["text"].str.strip().str.len() >= 4]
     phrase_df = phrase_df[~phrase_df["text"].apply(_is_noise)]
+    phrase_df = phrase_df[~phrase_df["text"].apply(_is_system_or_survey)]
     phrase_text = phrase_df["text"].str.strip()
     phrase_counts = phrase_text.value_counts().head(10)
     user_phrases = [{"phrase": str(p), "count": int(c)} for p, c in phrase_counts.items()]
@@ -967,11 +969,44 @@ def get_dimension_report(df: pd.DataFrame,
             .nunique()
             .sort_values(ascending=False)
         )
-        subcategories_breakdown = [
-            {"name": str(name), "conversations": int(cnt),
-             "pct": round(cnt / n * 100, 1) if n else 0.0}
-            for name, cnt in sub_counts.items()
-        ]
+        for sub_name, sub_cnt in sub_counts.items():
+            sub_filtered = sub_data[sub_data["categoria_yaml"] == sub_name]
+            sub_threads = set(sub_filtered["thread_id"].unique())
+            sub_pct = round(sub_cnt / n * 100, 1) if n else 0.0
+
+            # Sub: user questions (>= 3 words, no noise/system)
+            sub_phrase_df = sub_filtered[sub_filtered["text"].str.strip().str.len() >= 4]
+            sub_phrase_df = sub_phrase_df[~sub_phrase_df["text"].apply(_is_noise)]
+            sub_phrase_df = sub_phrase_df[~sub_phrase_df["text"].apply(_is_system_or_survey)]
+            sub_q_df = sub_phrase_df[sub_phrase_df["text"].str.strip().str.split().str.len() >= 3]
+            sub_q_counts = sub_q_df["text"].str.strip().value_counts().head(10)
+            sub_questions = [{"phrase": str(p), "count": int(c)} for p, c in sub_q_counts.items()]
+
+            # Sub: failures
+            sub_fail_threads = sub_threads & failure_threads
+            sub_fail_count = len(sub_fail_threads)
+            sub_fail_pct = round(sub_fail_count / len(sub_threads) * 100, 1) if sub_threads else 0.0
+
+            # Sub: unanswered questions from failed threads
+            sub_unanswered = []
+            if sub_fail_threads:
+                sub_fail_msgs = sub_filtered[sub_filtered["thread_id"].isin(sub_fail_threads)]
+                sub_fail_msgs = sub_fail_msgs[sub_fail_msgs["text"].str.strip().str.len() >= 4]
+                sub_fail_msgs = sub_fail_msgs[~sub_fail_msgs["text"].apply(_is_system_or_survey)]
+                sub_fail_msgs = sub_fail_msgs[~sub_fail_msgs["text"].apply(_is_noise)]
+                sub_fail_msgs = sub_fail_msgs[sub_fail_msgs["text"].str.strip().str.split().str.len() >= 3]
+                sub_unanswered_counts = sub_fail_msgs["text"].str.strip().value_counts().head(10)
+                sub_unanswered = [{"phrase": str(p), "count": int(c)} for p, c in sub_unanswered_counts.items()]
+
+            subcategories_breakdown.append({
+                "name": str(sub_name),
+                "conversations": int(sub_cnt),
+                "pct": sub_pct,
+                "user_questions": sub_questions,
+                "failures": sub_fail_count,
+                "failure_pct": sub_fail_pct,
+                "unanswered_questions": sub_unanswered,
+            })
 
     # --- Unanswered user questions (from failed threads, no survey/feedback noise) ---
     unanswered_questions = []
@@ -979,7 +1014,7 @@ def get_dimension_report(df: pd.DataFrame,
         dim_fail_threads = dim_threads & failure_threads
         fail_msgs = filtered[filtered["thread_id"].isin(dim_fail_threads)].copy()
         fail_msgs = fail_msgs[fail_msgs["text"].str.strip().str.len() >= 4]
-        fail_msgs = fail_msgs[~fail_msgs["text"].str.startswith("[survey]", na=False)]
+        fail_msgs = fail_msgs[~fail_msgs["text"].apply(_is_system_or_survey)]
         fail_msgs = fail_msgs[~fail_msgs["text"].apply(_is_noise)]
         fail_msgs = fail_msgs[fail_msgs["text"].str.strip().str.split().str.len() >= 3]
         fail_phrase_counts = fail_msgs["text"].str.strip().value_counts().head(50)

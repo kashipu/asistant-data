@@ -351,6 +351,100 @@ def get_advisors_endpoint(
     df = DataEngine.get_instance().get_messages(start_date, end_date)
     return detect_advisor_requests(df)
 
+
+@app.get("/api/advisor-escalation")
+def get_advisor_escalation(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """
+    Advisor escalation funnel:
+    - arrived_seeking: threads whose first intent was 'Escalamiento a Asesor'
+    - ended_requesting: threads redirected to servilinea/advisor (from referrals)
+    - bot_failed_then_requested: threads where bot failed AND got redirected (excluding those who arrived seeking)
+    """
+    engine = DataEngine.get_instance()
+    df = engine.get_messages(start_date, end_date)
+    hdf = df[df["type"] == "human"].copy()
+    all_threads = set(hdf["thread_id"].unique())
+    total = len(all_threads)
+
+    # 1. Arrived seeking advisor (category = Escalamiento a Asesor)
+    esc_col = "categoria_yaml"
+    arrived_seeking = set()
+    if esc_col in hdf.columns:
+        esc_df = hdf[hdf[esc_col] == "Escalamiento a Asesor"]
+        arrived_seeking = set(esc_df["thread_id"].unique())
+
+    # 2. Ended requesting advisor (redirected to any channel)
+    ref_df = engine.referrals_df
+    if ref_df is not None and not ref_df.empty:
+        # Filter by date range if needed
+        if start_date or end_date:
+            ref_threads_in_period = all_threads
+            redirected_threads = set(ref_df[ref_df["thread_id"].isin(ref_threads_in_period)]["thread_id"])
+        else:
+            redirected_threads = set(ref_df["thread_id"])
+        # By channel
+        ref_in_scope = ref_df[ref_df["thread_id"].isin(all_threads)]
+        by_channel = {}
+        if "channel" in ref_in_scope.columns:
+            for ch, grp in ref_in_scope.groupby("channel"):
+                by_channel[str(ch)] = int(grp["thread_id"].nunique())
+    else:
+        redirected_threads = set()
+        by_channel = {}
+
+    # 3. Bot failed then redirected (excluding those who arrived seeking)
+    fail_df = engine.failures_df
+    fail_threads = set(fail_df["thread_id"]) if fail_df is not None and not fail_df.empty else set()
+    fail_threads_in_scope = fail_threads & all_threads
+    bot_failed_then_redirected = (fail_threads_in_scope & redirected_threads) - arrived_seeking
+
+    # 4. Arrived seeking AND were redirected
+    arrived_and_redirected = arrived_seeking & redirected_threads
+
+    # 5. Ended requesting WITHOUT initially seeking (organic escalation)
+    organic_escalation = redirected_threads - arrived_seeking
+
+    # 6. Top categories of threads that ended requesting advisor (organic only)
+    organic_hdf = hdf[hdf["thread_id"].isin(organic_escalation)]
+    top_categories = []
+    if "macro_yaml" in organic_hdf.columns:
+        skip = {"Sin Clasificar", "Encuestas", "Atención y Contacto"}
+        cat_data = organic_hdf[organic_hdf["macro_yaml"].notna() & (~organic_hdf["macro_yaml"].isin(skip))]
+        cat_counts = cat_data.groupby("macro_yaml")["thread_id"].nunique().sort_values(ascending=False).head(10)
+        for name, cnt in cat_counts.items():
+            top_categories.append({"name": str(name), "conversations": int(cnt),
+                                   "pct": round(cnt / len(organic_escalation) * 100, 1) if organic_escalation else 0})
+
+    # 7. Top subcategories for organic escalation
+    top_subcategories = []
+    if "categoria_yaml" in organic_hdf.columns:
+        skip_subs = {"Encuesta", "Saludos", "Sin Sentido", "Retroalimentación", "Sin Clasificar", "Escalamiento a Asesor"}
+        sub_data = organic_hdf[organic_hdf["categoria_yaml"].notna() & (~organic_hdf["categoria_yaml"].isin(skip_subs))]
+        sub_counts = sub_data.groupby("categoria_yaml")["thread_id"].nunique().sort_values(ascending=False).head(15)
+        for name, cnt in sub_counts.items():
+            top_subcategories.append({"name": str(name), "conversations": int(cnt),
+                                      "pct": round(cnt / len(organic_escalation) * 100, 1) if organic_escalation else 0})
+
+    return {
+        "total_conversations": total,
+        "arrived_seeking_advisor": len(arrived_seeking),
+        "arrived_seeking_pct": round(len(arrived_seeking) / total * 100, 1) if total else 0,
+        "total_redirected": len(redirected_threads),
+        "total_redirected_pct": round(len(redirected_threads) / total * 100, 1) if total else 0,
+        "by_channel": by_channel,
+        "arrived_and_redirected": len(arrived_and_redirected),
+        "organic_escalation": len(organic_escalation),
+        "organic_escalation_pct": round(len(organic_escalation) / total * 100, 1) if total else 0,
+        "bot_failed_then_redirected": len(bot_failed_then_redirected),
+        "bot_failed_then_redirected_pct": round(len(bot_failed_then_redirected) / total * 100, 1) if total else 0,
+        "top_categories_organic": top_categories,
+        "top_subcategories_organic": top_subcategories,
+    }
+
+
 @app.get("/api/feedbacks")
 def api_get_feedbacks(page: int = 1, limit: int = 20):
     return get_feedback_messages(page=page, limit=limit)

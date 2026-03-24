@@ -86,11 +86,22 @@ categorias:
   - impuestos
   - hacer pagos
   - realizar pagos
-- nombre: Pago con QR / PSE / Digital
+- nombre: Pagos PSE
   macro: Pagos
-  descripcion: Pagos digitales mediante QR, PSE u otros medios electrónicos.
+  descripcion: Pagos o transferencias realizadas a través del botón PSE.
   palabras_clave:
   - pse
+  - boton pse
+  - pago pse
+  - pago por pse
+  - transferencia pse
+  - pse no funciona
+  - pse error
+  - pse rechazado
+- nombre: Pago con QR / Digital
+  macro: Pagos
+  descripcion: Pagos digitales mediante QR u otros medios electrónicos.
+  palabras_clave:
   - qr
   - pago qr
   - pago digital
@@ -351,8 +362,49 @@ categorias:
   - es seguro
   - muy segura
   - muy seguro
+# ─────────────────────────────────────────────
+# MACRO: Acceso y App
+# ─────────────────────────────────────────────
+- nombre: Canales Digitales (App / Web)
+  macro: Acceso y App
+  descripcion: Consultas o problemas con la aplicación móvil (Banca Móvil), el portal web (Banca Virtual) o canales digitales.
+  palabras_clave:
+  - banca movil
+  - banca virtual
+  - app
+  - aplicacion
+  - plataforma
+  - portal web
+  - portal transaccional
+  - canal virtual
+  - canales digitales
+  - entrar a la app
+  - clave internet
+  - pagina web
+  - pagina del banco
+  - sitio web
+  - web
+  - no carga la app
+  - no abre la app
+  - no me carga
+  - no puedo entrar
+  - no puedo ingresar
+  - no me deja entrar
+  - no me deja ingresar
+  - pantalla en blanco
+  - error en la app
+  - actualizar app
+  - actualizar la app
+  - descargar app
+  - descargar la app
+  - instalar app
+  - no se actualiza
+  - se cierra la app
+  - se cierra sola
+  - no funciona la app
+  - no sirve la app
 - nombre: Problemas Técnicos / Caídas
-  macro: App y Canales
+  macro: Acceso y App
   descripcion: Lentitud, caídas de app, errores técnicos, congelamientos o fallas.
   min_len: 5
   palabras_clave:
@@ -364,7 +416,6 @@ categorias:
   - codigo errado
   - codigo incorrecto
   - codigo invalido
-  - demora mucho
   - devolviendo
   - devuelve
   - es estable
@@ -377,8 +428,6 @@ categorias:
   - muy demorada
   - muy demorado
   - muy estable
-  - muy lenta
-  - muy lento
   - no abre
   - no carga
   - no funciona
@@ -407,7 +456,7 @@ categorias:
   - mi app no abre
   - la aplicacion no funciona
 - nombre: Funcionalidades Bloqueadas
-  macro: App y Canales
+  macro: Acceso y App
   descripcion: Opciones, botones o funcionalidades de la app que no están disponibles, aparecen inhabilitadas o no dejan realizar acciones específicas.
   palabras_clave:
   - deshabilitada
@@ -434,74 +483,69 @@ categorias:
   - sale gris
   - no me habilita
   - no habilita
-- nombre: Canales Digitales (App / Web)
-  macro: App y Canales
-  descripcion: Consultas o problemas con la aplicación móvil (Banca Móvil), el portal web (Banca Virtual) o canales digitales.
+# ─────────────────────────────────────────────
+# MACRO: Atención y Contacto
+# ─────────────────────────────────────────────
+- nombre: Escalamiento a Asesor
+  macro: Atención y Contacto
+  descripcion: Usuarios que solicitan hablar con un asesor humano, ya sea por frustración o porque el bot no resolvió su consulta.
   palabras_clave:
-  - banca movil
-  - banca virtual
-  - app
-  - aplicacion
-  - plataforma
-  - portal web
-  - portal transaccional
-  - canal virtual
-  - canales digitales
-  - entrar a la app
-  - clave internet
-  - pagina web
-  - pagina del banco
-  - sitio web
-  - web
-  - no carga la app
-  - no abre la app
-  - no me carga
-  - no abre
-  - no puedo entrar
-  - no puedo ingresar
-  - no me deja entrar
-  - no me deja ingresar
-  - pantalla en blanco
-  - error en la app
-  - actualizar app
-  - actualizar la app
-  - descargar app
-  - descargar la app
-  - instalar app
-  - no se actualiza
-  - se cierra la app
-  - se cierra sola
-  - no funciona la app
-  - no sirve la app
-- nombre: Canales Físicos y Asistidos
-  macro: App y Canales
-  descripcion: Oficinas, cajeros, corresponsales, atención en persona, WhatsApp, servilínea o asesores telefónicos.
-  palabras_clave:
-  - call center
-  - corresponsal
-  - entrega de plastico
-  - oficina
-  - oficinas
-  - punto de atencion
-  - servilinea
-  - whatsapp
-  - fila
-  - filas
   - asesor
   - agente
-  - trato
-  - tiempo de espera
-  - buen servicio
-  - excelente servicio
-  - exelente servicio
-  - servicio rapido
-  - servicio agil
+  - hablar con asesor
+  - hablar con un asesor
+  - necesito un asesor
+  - quiero un asesor
+  - necesito hablar con un asesor
+  - quiero hablar con un asesor
+  - comunicarme con un asesor
+  - necesito comunicarme con un asesor
+  - pasar con un asesor
+  - paseme con un asesor
+  - transfierame con un asesor
+  - asesor por favor
+  - necesito ayuda de un asesor
+  - asesor humano
+  - persona real
+  - hablar con alguien
+  - necesito hablar con alguien
+  - quiero hablar con una persona
+- nombre: Canales Telefónicos
+  macro: Atención y Contacto
+  descripcion: Consultas sobre líneas telefónicas, servilínea, call center o problemas para comunicarse por teléfono.
+  palabras_clave:
+  - call center
+  - servilinea
   - linea de atencion
   - telefono
   - llamar
   - marcar
   - asesor telefonico
   - no contestan las llamadas
+  - no contestan
+  - numero de contacto
+  - numero de telefono
+  - linea telefonica
+  - me cuelgan
+  - no me contestan
+  - no entra la llamada
+- nombre: Canales Presenciales
+  macro: Atención y Contacto
+  descripcion: Oficinas, cajeros, corresponsales, puntos de atención en persona y WhatsApp.
+  palabras_clave:
+  - corresponsal
+  - entrega de plastico
+  - oficina
+  - oficinas
+  - punto de atencion
+  - whatsapp
+  - fila
+  - filas
+  - trato
+  - tiempo de espera
+  - cajero
+  - cajeros
+  - sucursal
 - nombre: Actualización de Datos
   macro: Gestión Personal
   descripcion: Cambios de cédula, datos personales, correo o número de celular.

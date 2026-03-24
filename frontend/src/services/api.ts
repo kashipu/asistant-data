@@ -28,6 +28,7 @@ export const api = {
   getUncategorized: (page = 1, limit = 20, start_date?: string, end_date?: string) => axios.get(`${API_URL}/analysis/uncategorized`, { params: { page, limit, start_date, end_date } }).then(res => res.data),
   getSurveys: (start_date?: string, end_date?: string) => axios.get(`${API_URL}/analysis/surveys`, { params: { start_date, end_date } }).then(res => res.data),
   getAdvisors: (start_date?: string, end_date?: string) => axios.get(`${API_URL}/advisors`, { params: { start_date, end_date } }).then(res => res.data),
+  getAdvisorEscalation: (start_date?: string, end_date?: string) => axios.get(`${API_URL}/advisor-escalation`, { params: { start_date, end_date } }).then(res => res.data),
   getInsights: () => axios.get(`${API_URL}/insights`).then(res => res.data),
   getFeedbacks: (page = 1, limit = 20) => axios.get(`${API_URL}/feedbacks`, { params: { page, limit } }).then(res => res.data),
   getFeedbackOptions: () => axios.get(`${API_URL}/feedbacks/options`).then(res => res.data),
