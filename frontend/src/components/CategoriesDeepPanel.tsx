@@ -113,7 +113,7 @@ export function N(n: number): string {
   return Math.round(n).toLocaleString('es-CO');
 }
 
-export const CHANNEL_LABELS: Record<string, { label: string; icon: typeof Phone }> = {
+const CHANNEL_LABELS: Record<string, { label: string; icon: typeof Phone }> = {
   serviline: { label: 'Servilinea', icon: Phone },
   digital: { label: 'Digital', icon: Monitor },
   office: { label: 'Oficina', icon: Building2 },

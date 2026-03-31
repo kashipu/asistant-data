@@ -19,6 +19,7 @@ export function DownloadsPanel({ startDate, endDate }: Props) {
   const [options, setOptions] = useState<OptionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<'md' | 'csv' | null>(null);
+  const [downloadingExtra, setDownloadingExtra] = useState<'md' | 'xlsx' | null>(null);
 
   useEffect(() => {
     setSelectedValue('');
@@ -142,39 +143,91 @@ export function DownloadsPanel({ startDate, endDate }: Props) {
             )}
           </div>
 
-          {/* Download buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleDownload('md')}
-              disabled={!selectedValue || downloading !== null}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {downloading === 'md' ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <FileText size={16} />
-              )}
-              Descargar Markdown
-            </button>
-            <button
-              onClick={() => handleDownload('csv')}
-              disabled={!selectedValue || downloading !== null}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {downloading === 'csv' ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Table size={16} />
-              )}
-              Descargar CSV
-            </button>
+          {/* Reporte Detallado */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Reporte detallado</p>
+            <p className="text-xs text-gray-400 mb-3">
+              Markdown con KPIs y analisis. CSV con todas las conversaciones e indicadores por hilo.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDownload('md')}
+                disabled={!selectedValue || downloading !== null}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {downloading === 'md' ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <FileText size={16} />
+                )}
+                Descargar Markdown
+              </button>
+              <button
+                onClick={() => handleDownload('csv')}
+                disabled={!selectedValue || downloading !== null}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {downloading === 'csv' ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Table size={16} />
+                )}
+                Descargar CSV
+              </button>
+            </div>
           </div>
 
-          {selectedValue && (
-            <p className="text-xs text-gray-400 text-center">
-              El Markdown contiene el analisis detallado. El CSV contiene todas las conversaciones con indicadores por hilo.
+          {/* Preguntas sin informacion y derivaciones */}
+          <div className="border-t border-gray-200 pt-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Preguntas sin informacion y derivaciones</p>
+            <p className="text-xs text-gray-400 mb-3">
+              Markdown con las preguntas donde el asistente no tenia informacion. Excel con conversaciones completas separadas por canal de derivacion (Digital, Servilinea, Oficina).
             </p>
-          )}
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  setDownloadingExtra('md');
+                  try {
+                    await api.downloadFailuresMarkdown(dimension, selectedValue, startDate, endDate);
+                  } catch (err) {
+                    console.error('Download failed:', err);
+                  } finally {
+                    setDownloadingExtra(null);
+                  }
+                }}
+                disabled={!selectedValue || downloadingExtra !== null}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {downloadingExtra === 'md' ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <FileText size={16} />
+                )}
+                Sin Informacion (MD)
+              </button>
+              <button
+                onClick={async () => {
+                  setDownloadingExtra('xlsx');
+                  try {
+                    await api.downloadFailuresReferralsExcel(dimension, selectedValue, startDate, endDate);
+                  } catch (err) {
+                    console.error('Download failed:', err);
+                  } finally {
+                    setDownloadingExtra(null);
+                  }
+                }}
+                disabled={!selectedValue || downloadingExtra !== null}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {downloadingExtra === 'xlsx' ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Table size={16} />
+                )}
+                Derivaciones por Canal (Excel)
+              </button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

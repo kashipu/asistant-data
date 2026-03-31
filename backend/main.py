@@ -365,6 +365,8 @@ def get_advisor_escalation(
     """
     engine = DataEngine.get_instance()
     df = engine.get_messages(start_date, end_date)
+    if df.empty or "type" not in df.columns:
+        return {"total": 0, "arrived_seeking": {}, "redirected": {}, "organic_escalation": {}, "bot_failed_then_redirected": {}, "top_categories_organic": [], "top_subcategories_organic": [], "by_channel": {}, "arrived_and_redirected": 0}
     hdf = df[df["type"] == "human"].copy()
     all_threads = set(hdf["thread_id"].unique())
     total = len(all_threads)
@@ -771,3 +773,102 @@ def api_dimension_report_csv(
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
+
+@app.get("/api/reports/export/failures-questions-markdown")
+def api_export_failures_questions_md(
+    dimension: str = Query(..., pattern="^(product|category)$"),
+    value: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """Export a Markdown report of user questions that caused bot failures, filtered by dimension."""
+    from fastapi.responses import Response
+    from .export_builders import build_failures_questions_md, _filter_by_dimension
+
+    engine = DataEngine.get_instance()
+    df = engine.get_messages(start_date, end_date)
+    failures_df = engine.get_failures()
+
+    if (start_date or end_date) and failures_df is not None and not failures_df.empty and "fecha" in failures_df.columns:
+        mask = pd.Series(True, index=failures_df.index)
+        if start_date:
+            mask &= failures_df["fecha"].astype(str) >= start_date
+        if end_date:
+            mask &= failures_df["fecha"].astype(str) <= end_date
+        failures_df = failures_df[mask]
+
+    subcats = None
+    product_threads = None
+    if dimension == "category":
+        subcats = set(df[df["macro_yaml"] == value]["categoria_yaml"].dropna().unique())
+    else:
+        product_threads = set(df[df.get("product_yaml", pd.Series()) == value]["thread_id"].unique()) if "product_yaml" in df.columns else set()
+
+    failures_df = _filter_by_dimension(failures_df, dimension, value, subcats, product_threads)
+    referrals_df_full = engine.get_referrals()
+    if product_threads:
+        referrals_df_full = referrals_df_full[referrals_df_full["thread_id"].isin(product_threads)]
+    elif subcats:
+        referrals_df_full = referrals_df_full[referrals_df_full["intencion"].isin(subcats)]
+    content = build_failures_questions_md(failures_df, df, referrals_df_full, dimension, value, start_date, end_date)
+
+    safe_value = value.replace(" ", "_").replace("/", "-")
+    filename = f"preguntas_sin_info_{safe_value}.md"
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.get("/api/reports/export/failures-referrals-excel")
+def api_export_failures_referrals_excel(
+    dimension: str = Query(..., pattern="^(product|category)$"),
+    value: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """Export an Excel file with failures + referrals by channel, filtered by dimension."""
+    from fastapi.responses import Response
+    from .export_builders import build_failures_referrals_excel, _filter_by_dimension
+
+    engine = DataEngine.get_instance()
+    df = engine.get_messages(start_date, end_date)
+    failures_df = engine.get_failures()
+    referrals_df = engine.get_referrals()
+
+    # Date filter
+    for frame_name in ("failures_df", "referrals_df"):
+        frame = failures_df if frame_name == "failures_df" else referrals_df
+        if frame is not None and not frame.empty and "fecha" in frame.columns:
+            if start_date or end_date:
+                mask = pd.Series(True, index=frame.index)
+                if start_date:
+                    mask &= frame["fecha"].astype(str) >= start_date
+                if end_date:
+                    mask &= frame["fecha"].astype(str) <= end_date
+                if frame_name == "failures_df":
+                    failures_df = frame[mask]
+                else:
+                    referrals_df = frame[mask]
+
+    # Dimension filter
+    subcats = None
+    product_threads = None
+    if dimension == "category":
+        subcats = set(df[df["macro_yaml"] == value]["categoria_yaml"].dropna().unique())
+    else:
+        product_threads = set(df[df.get("product_yaml", pd.Series()) == value]["thread_id"].unique()) if "product_yaml" in df.columns else set()
+
+    failures_df = _filter_by_dimension(failures_df, dimension, value, subcats, product_threads)
+    referrals_df = _filter_by_dimension(referrals_df, dimension, value, subcats, product_threads)
+
+    content = build_failures_referrals_excel(failures_df, referrals_df, df, dimension, value)
+
+    safe_value = value.replace(" ", "_").replace("/", "-")
+    filename = f"derivaciones_por_canal_{safe_value}.xlsx"
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

@@ -120,4 +120,34 @@ export const api = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+  downloadFailuresMarkdown: async (dimension: 'product' | 'category', value: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ dimension, value });
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    const response = await axios.get(`${API_URL}/reports/export/failures-questions-markdown?${params}`, { responseType: 'blob' });
+    const safeValue = value.replace(/ /g, '_').replace(/\//g, '-');
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'text/markdown' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `preguntas_sin_info_${safeValue}_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  downloadFailuresReferralsExcel: async (dimension: 'product' | 'category', value: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ dimension, value });
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    const response = await axios.get(`${API_URL}/reports/export/failures-referrals-excel?${params}`, { responseType: 'blob' });
+    const safeValue = value.replace(/ /g, '_').replace(/\//g, '-');
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `derivaciones_por_canal_${safeValue}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
