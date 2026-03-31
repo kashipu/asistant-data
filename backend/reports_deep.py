@@ -1010,11 +1010,14 @@ def get_dimension_report(df: pd.DataFrame,
             sub_pct = round(sub_cnt / n * 100, 1) if n else 0.0
 
             # Sub: user questions (>= 3 words, no noise/system)
-            sub_phrase_df = sub_filtered[sub_filtered["text"].str.strip().str.len() >= 4]
-            sub_phrase_df = sub_phrase_df[~sub_phrase_df["text"].apply(_is_noise)]
-            sub_phrase_df = sub_phrase_df[~sub_phrase_df["text"].apply(_is_system_or_survey)]
+            sub_phrase_df = sub_filtered[
+                (sub_filtered["text"].str.strip().str.len() >= 4)
+                & (~sub_filtered["text"].apply(_is_noise))
+                & (~sub_filtered["text"].apply(_is_system_or_survey))
+            ]
             sub_q_df = sub_phrase_df[sub_phrase_df["text"].str.strip().str.split().str.len() >= 3]
-            sub_q_counts = sub_q_df["text"].str.strip().value_counts().head(10)
+            sub_q_text = sub_q_df["text"].str.strip()
+            sub_q_counts = sub_q_text.value_counts().head(10)
             sub_questions = [{"phrase": str(p), "count": int(c)} for p, c in sub_q_counts.items()]
 
             # Sub: failures
